@@ -186,6 +186,23 @@ paths:
         '200':
           description: Password reset successfully
 
+  /auth/change-password:
+    post:
+      summary: Change password while authenticated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string }
+      responses:
+        '200':
+          description: Password changed successfully
+
   /users:
     get:
       summary: Get paginated list of users (Admin only)
@@ -202,6 +219,49 @@ paths:
       responses:
         '200':
           description: Paginated response of users
+          
+  /users/{id}:
+    get:
+      summary: Get user details by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: User details
+        '404':
+          description: User not found
+    put:
+      summary: Update user (Admin or Self)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName: { type: string }
+                roleId: { type: string, format: uuid }
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: User updated successfully
+    delete:
+      summary: Soft delete user (Admin or Self)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: User deleted successfully
           
   /audit-logs:
     get:
