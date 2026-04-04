@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: UDSM Information Dissemination Platform API
+  version: 1.0.0
+  description: Backend APIs for the UDSM Information Dissemination Platform. Built with Next.js App Router.
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+    
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        registrationNumber:
+          type: string
+        email:
+          type: string
+        roleId:
+          type: string
+          format: uuid
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+          
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new student
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName, registrationNumber, course, sex, email, password]
+              properties:
+                fullName: { type: string }
+                registrationNumber: { type: string }
+                course: { type: string }
+                sex: { type: string, enum: ["MALE", "FEMALE"] }
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Validation error
+        '409':
+          description: Email or Registration Number already exists
+
+  /auth/login:
+    post:
+      summary: Authenticate user and get JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token: { type: string }
+                      user: { $ref: '#/components/schemas/User' }
+        '401':
+          description: Invalid credentials
+
+  /auth/generate-otp:
+    post:
+      summary: Request an OTP for password reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: OTP generated and sent to email
+
+  /auth/verify-otp:
+    post:
+      summary: Verify the OTP and get a reset token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otpCode]
+              properties:
+                email: { type: string, format: email }
+                otpCode: { type: string }
+      responses:
+        '200':
+          description: Returns a short-lived reset token
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      resetToken: { type: string }
+
+  /auth/reset-password:
+    post:
+      summary: Consume reset token to change password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resetToken, newPassword]
+              properties:
+                resetToken: { type: string }
+                newPassword: { type: string }
+      responses:
+        '200':
+          description: Password reset successfully
+
+  /users:
+    get:
+      summary: Get paginated list of users (Admin only)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated response of users
+          
+  /audit-logs:
+    get:
+      summary: Get paginated audit logs (Admin only)
+      parameters:
+        - in: query
+          name: action
+          schema: { type: string }
+        - in: query
+          name: userId
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated response of audit logs
