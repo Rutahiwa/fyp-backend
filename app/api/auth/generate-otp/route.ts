@@ -1,7 +1,73 @@
-// POST /api/auth/generate-otp
-// Implemented in Phase 5
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { users, otp } from "@/lib/db/schema";
+import { eq, and, isNull } from "drizzle-orm";
+import { generateOtpSchema } from "@/lib/validators/auth";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { logAction } from "@/lib/audit";
+import { sendOtpEmail } from "@/lib/mail";
+import { rateLimit } from "@/lib/utils/rate-limit";
+import crypto from "crypto";
 
-export async function POST() {
-    return NextResponse.json({ message: "Not implemented yet" }, { status: 501 });
+export async function POST(req: NextRequest) {
+  try {
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "Unknown";
+    
+    // Rate limit: 3 requests per 15 mins per IP
+    const rl = rateLimit(`generate_otp_${ip}`, 3, 15 * 60 * 1000);
+    if (!rl.success) {
+      return errorResponse("Too many requests. Please try again later.", 429);
+    }
+
+    const body = await req.json();
+    const validation = generateOtpSchema.safeParse(body);
+    if (!validation.success) {
+      return errorResponse("Validation failed", 400, validation.error.format());
+    }
+
+    const { email } = validation.data;
+
+    const userResult = await db.select({ id: users.id }).from(users)
+      .where(and(eq(users.email, email), eq(users.isActive, true), isNull(users.deletedAt)))
+      .limit(1);
+    
+    const user = userResult[0];
+
+    // Generic success to prevent email enumeration
+    if (!user) {
+      return successResponse(null, "If the email is registered, an OTP has been sent.");
+    }
+
+    // Invalidate existing unused OTPs
+    await db.update(otp)
+      .set({ usedAt: new Date() }) // mark as used or deleted
+      .where(and(eq(otp.userId, user.id), isNull(otp.usedAt)));
+
+    // Generate 6-digit OTP
+    const otpCode = crypto.randomInt(100000, 999999).toString();
+    const expiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10);
+    const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+    // Save to DB
+    await db.insert(otp).values({
+      userId: user.id,
+      otpCode,
+      expiresAt,
+    });
+
+    // Send email
+    await sendOtpEmail(email, otpCode);
+
+    await logAction({
+      userId: user.id,
+      action: "GENERATE_OTP",
+      entity: "OTP",
+      ipAddress: ip,
+    });
+
+    return successResponse(null, "If the email is registered, an OTP has been sent.");
+  } catch (error) {
+    console.error("Generate OTP error:", error);
+    return errorResponse("Internal server error", 500);
+  }
 }
