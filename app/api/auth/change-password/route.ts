@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Validation failed", 400, validation.error.format());
     }
 
-    const { oldPassword, newPassword } = validation.data;
+    const { currentPassword, newPassword } = validation.data;
     const userId = auth.user.userId;
 
     // 3. Fetch user directly
@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Verify old password
-    const isOldPasswordMatch = await comparePassword(oldPassword, user.password);
+    const isOldPasswordMatch = await comparePassword(currentPassword, user.password);
     if (!isOldPasswordMatch) {
-      return errorResponse("Incorrect old password", 400);
+      return errorResponse("Incorrect current password", 400);
     }
 
     // 5. Hash new password
