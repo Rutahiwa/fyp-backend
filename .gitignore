@@ -49,3 +49,9 @@ next-env.d.ts
 # ide
 .vscode/
 .idea/
+
+# scratch / one-off scripts (never commit)
+/scratch/
+
+# session log (local dev notes)
+/docs/session-log.md

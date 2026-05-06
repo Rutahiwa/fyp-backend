@@ -1,13 +1,50 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, JWTPayload } from "./jwt";
 import { db } from "../db";
 import { users, rolePermissions, permissions } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import { errorResponse } from "../utils/api-response";
 
 export interface AuthResult {
   user?: JWTPayload & { isActive: boolean };
   error?: string;
   status?: number;
+}
+
+export interface AuthContext {
+  user: JWTPayload & { isActive: boolean };
+}
+
+type RouteContext = { params: Promise<Record<string, string>> };
+type AuthenticatedHandler = (
+  req: NextRequest,
+  ctx: RouteContext & AuthContext,
+) => Promise<NextResponse>;
+
+/**
+ * Wraps a route handler — extracts and verifies the JWT, then injects `user`
+ * into the context. Returns 401 if authentication fails.
+ */
+export function withAuth(handler: AuthenticatedHandler) {
+  return async (req: NextRequest, ctx: RouteContext): Promise<NextResponse> => {
+    const auth = await authenticateRequest(req);
+    if (auth.error || !auth.user) {
+      return errorResponse(auth.error || "Unauthorized", auth.status || 401);
+    }
+    return handler(req, { ...ctx, user: auth.user });
+  };
+}
+
+/**
+ * Wraps a route handler — authenticates AND checks for a specific permission.
+ * Returns 401 if unauthenticated, 403 if missing the required permission.
+ */
+export function withPermission(handler: AuthenticatedHandler, permissionName: string) {
+  return withAuth(async (req, ctx) => {
+    const hasPerm = await checkPermission(ctx.user.roleId, permissionName);
+    if (!hasPerm) return errorResponse("Forbidden. Missing required permission.", 403);
+    return handler(req, ctx);
+  });
 }
 
 export async function authenticateRequest(request: NextRequest): Promise<AuthResult> {
