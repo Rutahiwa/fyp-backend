@@ -8,3 +8,4 @@ export * from "./permission-groups";
 export * from "./role-permissions";
 export * from "./otp";
 export * from "./audit-logs";
+export * from "./colleges";

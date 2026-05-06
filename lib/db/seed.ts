@@ -1,31 +1,53 @@
 import { db } from "./index";
-import { roles, permissions, permissionGroups, rolePermissions, users } from "./schema";
+import { eq } from "drizzle-orm";
+import { roles, permissions, permissionGroups, rolePermissions, users, colleges } from "./schema";
+import { onConflictDoNothing } from "drizzle-orm";
 import { hashPassword } from "../auth/password";
 
 async function main() {
   console.log("Seeding database...");
+  
+  // 0. Create Colleges
+  await db.insert(colleges).values([
+    { name: "College of Information and Communication Technologies", shortName: "CoICT" },
+    { name: "University of Dar es Salaam Business School", shortName: "UDBS" },
+    { name: "College of Social Sciences", shortName: "CoSS" },
+    { name: "College of Natural and Applied Sciences", shortName: "CoNAS" },
+    { name: "College of Humanities", shortName: "CoHU" },
+    { name: "College of Agriculture and Food Sciences", shortName: "CoAF" },
+    { name: "College of Engineering and Technology", shortName: "CoET" }
+  ]).onConflictDoNothing({ target: colleges.shortName });
+
+  console.log("✅ Colleges created/skipped");
 
   // 1. Create Default Roles
-  const [adminRole] = await db.insert(roles).values([
+  await db.insert(roles).values([
     { name: "admin", description: "System Administrator with full access" },
     { name: "student", description: "Student user" },
     { name: "staff", description: "University staff member" }
-  ]).returning();
+  ]).onConflictDoNothing({ target: roles.name });
   
-  console.log("✅ Roles created");
+  // Get admin role ID for later use
+  const adminRoleResult = await db.select().from(roles).where(eq(roles.name, "admin")).limit(1);
+  const adminRole = adminRoleResult[0];
+  
+  console.log("✅ Roles created/skipped");
 
   // 2. Create Permission Groups
-  const [userGroup] = await db.insert(permissionGroups).values([
+  await db.insert(permissionGroups).values([
     { name: "Users", description: "User management permissions" },
     { name: "Roles", description: "Role management permissions" },
     { name: "Permissions", description: "Permission management permissions" },
     { name: "Audit", description: "Audit log permissions" }
-  ]).returning();
+  ]).onConflictDoNothing({ target: permissionGroups.name });
 
-  console.log("✅ Permission groups created");
+  const userGroupResult = await db.select().from(permissionGroups).where(eq(permissionGroups.name, "Users")).limit(1);
+  const userGroup = userGroupResult[0];
+
+  console.log("✅ Permission groups created/skipped");
 
   // 3. Create Permissions
-  const createdPermissions = await db.insert(permissions).values([
+  await db.insert(permissions).values([
     // User permissions
     { name: "user.create", description: "Create users", groupId: userGroup.id },
     { name: "user.read", description: "Read users", groupId: userGroup.id },
@@ -40,10 +62,16 @@ async function main() {
     
     // System
     { name: "permission.read", description: "Read permissions" },
-    { name: "audit.read", description: "Read audit logs" }
-  ]).returning();
+    { name: "audit.read", description: "Read audit logs" },
 
-  console.log("✅ Permissions created");
+    // Colleges
+    { name: "college.read", description: "Read colleges" },
+    { name: "college.manage", description: "Manage colleges" }
+  ]).onConflictDoNothing({ target: permissions.name });
+
+  const createdPermissions = await db.select().from(permissions);
+
+  console.log("✅ Permissions created/skipped");
 
   // 4. Assign all permissions to Admin role
   const rolePermissionAssignments = createdPermissions.map(p => ({
@@ -51,27 +79,26 @@ async function main() {
     permissionId: p.id,
   }));
   
-  await db.insert(rolePermissions).values(rolePermissionAssignments);
+  await db.insert(rolePermissions).values(rolePermissionAssignments)
+    .onConflictDoNothing({ target: [rolePermissions.roleId, rolePermissions.permissionId] });
   
-  console.log("✅ Admin role permissions assigned");
+  console.log("✅ Admin role permissions assigned/skipped");
 
   // 5. Setup a default Admin User
-  // IMPORTANT: For seeding, normally we would import from a real crypto utility.
-  // For the sake of this phase, we use a simple placeholder password hash logic
-  // since `lib/auth/password.ts` isn't fully implemented yet.
+  const hashedPassword = await hashPassword("rut4shell");
   
   await db.insert(users).values({
     fullName: "Super Admin",
     registrationNumber: "ADMIN001",
     course: "System Administration",
     sex: "MALE",
-    email: "admin@udsm.ac.tz",
-    password: "placeholder-hash-until-phase-2",
+    email: "admin@udsminfo.com",
+    password: hashedPassword,
     roleId: adminRole.id,
     isActive: true,
-  });
+  }).onConflictDoNothing({ target: users.email });
 
-  console.log("✅ Default admin user created");
+  console.log("✅ Default admin user created/skipped");
   console.log("Database seeded successfully!");
   process.exit(0);
 }
