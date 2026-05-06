@@ -40,12 +40,14 @@ export async function GET(req: NextRequest) {
       id: users.id,
       fullName: users.fullName,
       registrationNumber: users.registrationNumber,
-      course: users.course,
       sex: users.sex,
       email: users.email,
       isActive: users.isActive,
       roleId: users.roleId,
       roleName: roles.name,
+      programmeId: users.programmeId,
+      yearOfStudy: users.yearOfStudy,
+      currentSemester: users.currentSemester,
       createdAt: users.createdAt,
     }).from(users)
     .leftJoin(roles, eq(users.roleId, roles.id))

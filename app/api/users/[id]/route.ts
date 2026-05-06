@@ -26,12 +26,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       id: users.id,
       fullName: users.fullName,
       registrationNumber: users.registrationNumber,
-      course: users.course,
       sex: users.sex,
       email: users.email,
       isActive: users.isActive,
       roleId: users.roleId,
       roleName: roles.name,
+      collegeId: users.collegeId,
+      programmeId: users.programmeId,
+      yearOfStudy: users.yearOfStudy,
+      currentSemester: users.currentSemester,
       createdAt: users.createdAt,
     })
     .from(users)

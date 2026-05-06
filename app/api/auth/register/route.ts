@@ -46,11 +46,12 @@ export async function POST(req: NextRequest) {
     const [newUser] = await db.insert(users).values({
       fullName: data.fullName,
       registrationNumber: data.registrationNumber,
-      course: data.course,
       sex: data.sex,
       email: data.email,
       password: hashedPassword,
       roleId: studentRole.id,
+      programmeId: data.programmeId,
+      yearOfStudy: data.yearOfStudy,
       isActive: true,
     }).returning({
       id: users.id,
@@ -58,6 +59,8 @@ export async function POST(req: NextRequest) {
       registrationNumber: users.registrationNumber,
       email: users.email,
       roleId: users.roleId,
+      programmeId: users.programmeId,
+      yearOfStudy: users.yearOfStudy,
       createdAt: users.createdAt,
     });
 

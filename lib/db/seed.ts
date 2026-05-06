@@ -98,7 +98,6 @@ async function main() {
   await db.insert(users).values({
     fullName: "Super Admin",
     registrationNumber: "ADMIN001",
-    course: "System Administration",
     sex: "MALE",
     email: "admin@udsminfo.com",
     password: hashedPassword,

@@ -8,10 +8,11 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   registrationNumber: z.string().min(5, "Registration number is required"),
-  course: z.string().min(2, "Course is required"),
   sex: z.enum(["MALE", "FEMALE"]),
   email: z.string().email(),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  programmeId: z.string().uuid("Programme is required"),
+  yearOfStudy: z.number().int().min(1).max(7),
 });
 
 export const changePasswordSchema = z.object({
