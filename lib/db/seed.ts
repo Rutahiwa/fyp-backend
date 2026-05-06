@@ -23,7 +23,9 @@ async function main() {
   await db.insert(roles).values([
     { name: "admin", description: "System Administrator with full access" },
     { name: "student", description: "Student user" },
-    { name: "staff", description: "University staff member" }
+    { name: "staff", description: "University staff member" },
+    { name: "lecturer", description: "University lecturer" },
+    { name: "class_representative", description: "Class representative" }
   ]).onConflictDoNothing({ target: roles.name });
   
   // Get admin role ID for later use
