@@ -1,7 +1,6 @@
 import { db } from "./index";
 import { eq } from "drizzle-orm";
 import { roles, permissions, permissionGroups, rolePermissions, users, colleges } from "./schema";
-import { onConflictDoNothing } from "drizzle-orm";
 import { hashPassword } from "../auth/password";
 
 async function main() {
@@ -66,7 +65,16 @@ async function main() {
 
     // Colleges
     { name: "college.read", description: "Read colleges" },
-    { name: "college.manage", description: "Manage colleges" }
+    { name: "college.manage", description: "Manage colleges" },
+
+    // Programmes
+    { name: "programme.manage", description: "Manage programmes" },
+
+    // Academic Years
+    { name: "academic_year.manage", description: "Manage academic years" },
+
+    // Assignments
+    { name: "assignment.manage", description: "Manage lecturer and CR assignments" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);

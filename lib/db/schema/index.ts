@@ -9,3 +9,7 @@ export * from "./role-permissions";
 export * from "./otp";
 export * from "./audit-logs";
 export * from "./colleges";
+export * from "./programmes";
+export * from "./academic-years";
+export * from "./lecturer-assignments";
+export * from "./cr-assignments";
