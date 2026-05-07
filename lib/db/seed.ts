@@ -83,7 +83,11 @@ async function main() {
     { name: "announcement.create", description: "Create announcements" },
     { name: "announcement.update", description: "Update announcements" },
     { name: "announcement.delete", description: "Delete announcements" },
-    { name: "announcement.pin", description: "Pin/unpin announcements" }
+    { name: "announcement.pin", description: "Pin/unpin announcements" },
+
+    // Stories
+    { name: "story.create", description: "Create stories" },
+    { name: "story.delete", description: "Delete stories" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);

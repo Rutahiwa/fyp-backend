@@ -17,3 +17,4 @@ export * from "./media";
 export * from "./categories";
 export * from "./event-categories";
 export * from "./announcements";
+export * from "./stories";
