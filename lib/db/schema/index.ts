@@ -22,3 +22,4 @@ export * from "./comments";
 export * from "./reactions";
 export * from "./events";
 export * from "./lost-found";
+export * from "./feedback";
