@@ -10,11 +10,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     
-    const hasPerm = await checkPermission(auth.user.roleId, "role.read");
+    const hasPerm = await checkPermission(auth.user.roleId, "permission.read");
     if (!hasPerm) return errorResponse("Forbidden", 403);
-    
+
     const resolvedParams = await params;
-    
+
     const permResult = await db.select({
       id: permissions.id,
       name: permissions.name,
