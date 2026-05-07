@@ -87,7 +87,12 @@ async function main() {
 
     // Stories
     { name: "story.create", description: "Create stories" },
-    { name: "story.delete", description: "Delete stories" }
+    { name: "story.delete", description: "Delete stories" },
+
+    // Events
+    { name: "event.create", description: "Create events" },
+    { name: "event.update", description: "Update events" },
+    { name: "event.delete", description: "Delete events" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);

@@ -20,3 +20,4 @@ export * from "./announcements";
 export * from "./stories";
 export * from "./comments";
 export * from "./reactions";
+export * from "./events";
