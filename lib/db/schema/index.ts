@@ -16,3 +16,4 @@ export * from "./cr-assignments";
 export * from "./media";
 export * from "./categories";
 export * from "./event-categories";
+export * from "./announcements";
