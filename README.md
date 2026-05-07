@@ -1,19 +1,20 @@
-# UDSM Information Dissemination Platform - Backend
+# UDSM Information Dissemination Platform — Backend
 
-This is the backend API for the UDSM Information Dissemination Platform, built with Next.js, Drizzle ORM, and PostgreSQL.
+Final Year Project — University of Dar es Salaam.  
+Backend API built with **Next.js** (App Router), **Drizzle ORM**, and **PostgreSQL** (Supabase).
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
-- **Node.js** v18 or higher
-- **PostgreSQL** database
-- **npm** or **pnpm**
+- Node.js v18+
+- PostgreSQL database (Supabase)
+- npm
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone <repo-url>
    cd fyp-backend
    ```
 
@@ -23,21 +24,17 @@ This is the backend API for the UDSM Information Dissemination Platform, built w
    ```
 
 3. Set up environment variables:
-   Copy `.env.example` to `.env.local` and fill in the values:
    ```bash
    cp .env.example .env.local
    ```
-   Required variables:
-   - `DATABASE_URL`: PostgreSQL connection string
-   - `JWT_SECRET`: Random string for token signing
-   - `RESEND_API_KEY`: API key from [Resend](https://resend.com) (for OTP emails)
+   Fill in `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 
 4. Run database migrations:
    ```bash
-   npm run db:push
+   npm run db:migrate
    ```
 
-5. (Optional) Seed the database with initial roles and an admin user:
+5. Seed the database:
    ```bash
    npm run db:seed
    ```
@@ -46,39 +43,134 @@ This is the backend API for the UDSM Information Dissemination Platform, built w
    ```bash
    npm run dev
    ```
-   The API will be available at `http://localhost:3000/api`.
+   API available at `http://localhost:3000/api`.
 
 ---
 
-## 🛠 API Usage
+## API Modules
 
-### Authentication
-Most endpoints require a JWT token.
-- **Login**: `POST /api/auth/login` returns a `token`.
-- **Authorization Header**: `Authorization: Bearer <token>`
+### Authentication & Users
+| Endpoint | Auth | Description |
+|:---|:---|:---|
+| `POST /auth/register` | Public | Register new student |
+| `POST /auth/login` | Public | Login, returns JWT |
+| `POST /auth/change-password` | JWT | Change own password |
+| `POST /auth/generate-otp` | Public | Request password reset OTP |
+| `POST /auth/verify-otp` | Public | Verify OTP, get reset token |
+| `POST /auth/reset-password` | Public | Reset password with token |
+| `POST /auth/change-email-request` | JWT | Request email change (OTP to new email) |
+| `POST /auth/change-email-verify` | JWT | Verify OTP and update email |
+| `GET /users` | `user.read` | Paginated user list |
+| `GET /users/{id}` | JWT | User profile |
+| `PUT /users/{id}` | JWT | Update profile |
+| `DELETE /users/{id}` | JWT | Soft delete user |
 
-### Core Modules
-- **Auth**: Registration, Login, OTP, Password Reset.
-- **Users**: User profile management and administrative listing.
-- **RBAC**: Management of Roles and Permissions.
-- **Audit Logs**: History of system actions.
+### Colleges & Programmes
+| `GET /colleges` | JWT | List all colleges |
+| `POST /colleges` | admin | Create college |
+| `GET /programmes` | JWT | Paginated, filterable by `?collegeId=` |
+| `POST /programmes` | `programme.manage` | Create programme |
+| `GET/PUT/DELETE /programmes/{id}` | — | CRUD operations |
 
-For full endpoint details, refer to the [openapi.yaml](./openapi.yaml) file.
+### Academic Years
+| `GET /academic-years` | JWT | Paginated list |
+| `GET /academic-years/current` | JWT | Current academic year |
+| `POST /academic-years` | `academic_year.manage` | Create year |
+| `PUT /academic-years/{id}` | `academic_year.manage` | Update year |
+| `POST /academic-years/{id}/set-current` | `academic_year.manage` | Toggle isCurrent |
+
+### Lecturer & CR Assignments
+| `GET /lecturer-assignments` | `assignment.manage` | List with joins |
+| `POST /lecturer-assignments` | `assignment.manage` | Assign lecturer |
+| `DELETE /lecturer-assignments/{id}` | `assignment.manage` | Remove |
+| `GET /cr-assignments` | `assignment.manage` | List with joins |
+| `POST /cr-assignments` | `assignment.manage` | Assign CR (max 2/class) |
+| `DELETE /cr-assignments/{id}` | `assignment.manage` | Remove |
+
+### Media Upload
+| `POST /media/upload` | JWT | Upload file (JPEG/PNG/WebP/GIF/MP4/PDF, max 10MB) |
+
+### Categories
+| `GET /categories` | JWT | List (filterable by `?module=`) |
+| `POST /categories` | admin | Create category |
+| `GET /event-categories` | JWT | List event categories with icons |
+| `POST /event-categories` | admin | Create event category |
+
+### Announcements
+| `GET /announcements` | JWT | Personalized feed with audience targeting |
+| `GET /announcements?isForYou=true` | JWT | Class-only feed |
+| `POST /announcements` | `announcement.create` | Create with audiences |
+| `GET /announcements/{id}` | JWT | Detail + increment viewCount |
+| `PUT /announcements/{id}` | `announcement.update` | Update |
+| `DELETE /announcements/{id}` | `announcement.delete` | Soft delete |
+| `POST /announcements/{id}/pin` | `announcement.pin` | Toggle pin |
+
+### Stories
+| `GET /stories` | JWT | Active stories (24h, with hasViewed flag) |
+| `POST /stories` | `story.create` | Create (auto-expires +24h) |
+| `POST /stories/{id}/view` | JWT | Mark as viewed |
+| `DELETE /stories/{id}` | `story.delete` | Soft delete |
+
+### Events
+| `GET /events` | JWT | Paginated, filterable by `?categoryId=&status=&upcoming=` |
+| `POST /events` | `event.create` | Create event |
+| `GET /events/{id}` | JWT | Detail with RSVP counts |
+| `PUT /events/{id}` | `event.update` | Update |
+| `DELETE /events/{id}` | `event.delete` | Soft delete |
+| `POST /events/{id}/rsvp` | JWT | Upsert RSVP (capacity-checked) |
+| `DELETE /events/{id}/rsvp` | JWT | Remove own RSVP |
+| `GET /events/{id}/attendees` | `event.update` | List GOING users (admin) |
+
+### Lost & Found
+| `GET /lost-found` | JWT | Paginated, filterable (anonymous-safe) |
+| `POST /lost-found` | JWT | Report item |
+| `GET /lost-found/{id}` | JWT | Detail (reporter hidden if anonymous) |
+| `PUT /lost-found/{id}` | JWT | Update (owner or admin) |
+| `DELETE /lost-found/{id}` | JWT | Soft delete (owner or admin) |
+| `POST /lost-found/{id}/resolve` | JWT | Mark as RESOLVED |
+
+### Comments & Reactions
+Comments and reactions are polymorphic — wired to announcements, events, and lost-found.
+| `GET/POST /{module}/{id}/comments` | JWT | List or post comment |
+| `DELETE /{module}/{id}/comments/{commentId}` | JWT | Delete comment (owner/admin) |
+| `POST /{module}/{id}/reactions` | JWT | Toggle like (idempotent) |
+
+### Feedback
+| `GET /feedback` | JWT | User's own submissions |
+| `POST /feedback` | JWT | Submit feedback |
+| `GET /admin/feedback` | `feedback.manage` | All submissions (admin) |
+| `PUT /admin/feedback/{id}` | `feedback.manage` | Update status + notes |
+
+### RBAC & Audit
+| `GET /roles` | `role.read` | List roles |
+| `POST /roles` | `role.create` | Create role with permissions |
+| `GET/PUT/DELETE /roles/{id}` | `role.*` | CRUD with built-in role protection |
+| `GET /permissions` | `permission.read` | List all permissions |
+| `GET /audit-logs` | `audit.read` | Paginated, multi-filter |
 
 ---
 
-## 📱 Integration Notes for Flutter
+## Standard Response Format
 
-- **Base URL**: `http://localhost:3000/api` (use your machine's IP if testing on a physical device).
-- **Date Format**: ISO 8601 strings.
-- **Pagination**: Use `page` and `pageSize` query parameters. Responses include a `meta` object with total counts.
+```json
+{ "success": true, "message": "Success", "data": {} }
+{ "success": true, "data": [], "meta": { "total": 100, "page": 1, "pageSize": 20, "totalPages": 5 } }
+{ "success": false, "message": "Error description", "errors": {} }
+```
 
----
+## Admin Credentials (dev)
+- **Email**: admin@udsminfo.com
+- **Password**: rut4shell
 
-## 🏗 Project Structure
+## Tech Stack
+- **Framework**: Next.js 16 (App Router)
+- **Database**: PostgreSQL via Supabase
+- **ORM**: Drizzle ORM
+- **Auth**: JWT (jsonwebtoken + bcrypt)
+- **Email**: Resend
+- **Storage**: Supabase Storage
+- **Validation**: Zod
+- **Language**: TypeScript
 
-- `app/api/`: API route handlers (Next.js App Router).
-- `lib/db/`: Database schema (Drizzle) and migrations.
-- `lib/auth/`: JWT and password utilities.
-- `lib/validators/`: Zod schemas for request validation.
-- `lib/utils/`: Shared utilities (API responses, pagination).
+## Full API Reference
+See [openapi.yaml](./openapi.yaml) for the complete OpenAPI 3.0 specification.
