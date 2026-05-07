@@ -18,3 +18,5 @@ export * from "./categories";
 export * from "./event-categories";
 export * from "./announcements";
 export * from "./stories";
+export * from "./comments";
+export * from "./reactions";

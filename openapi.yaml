@@ -947,3 +947,70 @@ paths:
       responses:
         '200':
           description: View recorded
+
+  /announcements/{id}/comments:
+    get:
+      summary: List comments on an announcement
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Array of comments with author info, newest first
+    post:
+      summary: Post a comment on an announcement
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+      responses:
+        '201':
+          description: Comment posted with author info
+
+  /announcements/{id}/comments/{commentId}:
+    delete:
+      summary: Delete a comment (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: commentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Comment deleted
+
+  /announcements/{id}/reactions:
+    post:
+      summary: Toggle like on an announcement (idempotent)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reaction toggled (liked/unliked)
