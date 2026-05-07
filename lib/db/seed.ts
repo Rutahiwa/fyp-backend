@@ -77,7 +77,13 @@ async function main() {
     { name: "academic_year.manage", description: "Manage academic years" },
 
     // Assignments
-    { name: "assignment.manage", description: "Manage lecturer and CR assignments" }
+    { name: "assignment.manage", description: "Manage lecturer and CR assignments" },
+
+    // Announcements
+    { name: "announcement.create", description: "Create announcements" },
+    { name: "announcement.update", description: "Update announcements" },
+    { name: "announcement.delete", description: "Delete announcements" },
+    { name: "announcement.pin", description: "Pin/unpin announcements" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);

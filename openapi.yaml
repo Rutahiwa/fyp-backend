@@ -376,3 +376,516 @@ paths:
       responses:
         '200':
           description: Permission details
+
+  /colleges:
+    get:
+      summary: List all colleges
+      responses:
+        '200':
+          description: Array of colleges
+    post:
+      summary: Create a college (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, shortName]
+              properties:
+                name: { type: string }
+                shortName: { type: string }
+      responses:
+        '201':
+          description: College created
+
+  /programmes:
+    get:
+      summary: List all programmes (paginated, filterable by collegeId)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: collegeId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Paginated list of programmes with college info
+    post:
+      summary: Create a programme (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [collegeId, name, code, durationYears]
+              properties:
+                collegeId: { type: string, format: uuid }
+                name: { type: string }
+                code: { type: string }
+                durationYears: { type: integer }
+      responses:
+        '201':
+          description: Programme created
+
+  /programmes/{id}:
+    get:
+      summary: Get programme details
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Programme details
+    put:
+      summary: Update a programme (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Programme updated
+    delete:
+      summary: Soft delete a programme (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Programme deleted
+
+  /academic-years:
+    get:
+      summary: List academic years (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Paginated list of academic years
+    post:
+      summary: Create an academic year (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label, startDate, endDate]
+              properties:
+                label: { type: string }
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+      responses:
+        '201':
+          description: Academic year created
+
+  /academic-years/current:
+    get:
+      summary: Get the current academic year
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current academic year
+
+  /academic-years/{id}:
+    get:
+      summary: Get academic year details
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Academic year details
+    put:
+      summary: Update an academic year (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Academic year updated
+
+  /academic-years/{id}/set-current:
+    post:
+      summary: Set academic year as current (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Academic year set as current
+
+  /lecturer-assignments:
+    get:
+      summary: List lecturer assignments (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list with user/programme/year joins
+    post:
+      summary: Assign a lecturer to a class (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lecturerId, programmeId, yearOfStudy, semester, subjectName, academicYearId]
+              properties:
+                lecturerId: { type: string, format: uuid }
+                programmeId: { type: string, format: uuid }
+                yearOfStudy: { type: integer }
+                semester: { type: integer }
+                subjectName: { type: string }
+                academicYearId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Lecturer assigned
+
+  /lecturer-assignments/{id}:
+    delete:
+      summary: Remove a lecturer assignment (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Assignment removed
+
+  /cr-assignments:
+    get:
+      summary: List CR assignments (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated list with user/programme/year joins
+    post:
+      summary: Assign a class representative (admin, max 2 per class)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, programmeId, yearOfStudy, academicYearId]
+              properties:
+                userId: { type: string, format: uuid }
+                programmeId: { type: string, format: uuid }
+                yearOfStudy: { type: integer }
+                academicYearId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: CR assigned
+
+  /cr-assignments/{id}:
+    delete:
+      summary: Remove a CR assignment (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: CR assignment removed
+
+  /auth/change-email-request:
+    post:
+      summary: Request email change (sends OTP to new email)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newEmail]
+              properties:
+                newEmail: { type: string, format: email }
+      responses:
+        '200':
+          description: Verification code sent
+
+  /auth/change-email-verify:
+    post:
+      summary: Verify OTP and update email
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newEmail, otpCode]
+              properties:
+                newEmail: { type: string, format: email }
+                otpCode: { type: string }
+      responses:
+        '200':
+          description: Email changed
+
+  /media/upload:
+    post:
+      summary: Upload a file (images, video, PDF)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      url: { type: string }
+                      type: { type: string }
+                      mimeType: { type: string }
+                      sizeBytes: { type: integer }
+                      filename: { type: string }
+
+  /categories:
+    get:
+      summary: List categories (filterable by module)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: module
+          schema: { type: string, enum: [ANNOUNCEMENT, LOST_FOUND, FEEDBACK] }
+      responses:
+        '200':
+          description: Array of categories
+    post:
+      summary: Create a category (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, module]
+              properties:
+                name: { type: string }
+                module: { type: string, enum: [ANNOUNCEMENT, LOST_FOUND, FEEDBACK] }
+      responses:
+        '201':
+          description: Category created
+
+  /event-categories:
+    get:
+      summary: List event categories
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Array of event categories with iconName
+    post:
+      summary: Create an event category (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                iconName: { type: string }
+      responses:
+        '201':
+          description: Event category created
+
+  /announcements:
+    get:
+      summary: Get personalized announcement feed
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: type
+          schema: { type: string, enum: [ANNOUNCEMENT, NOTICE, NEWS] }
+        - in: query
+          name: categoryId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: isForYou
+          schema: { type: boolean }
+          description: Strict class-only feed (PROGRAMME_YEAR matches only)
+      responses:
+        '200':
+          description: Personalized paginated feed with author, category, coverImage
+    post:
+      summary: Create an announcement
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content, type, audiences]
+              properties:
+                title: { type: string }
+                content: { type: string }
+                excerpt: { type: string }
+                type: { type: string, enum: [ANNOUNCEMENT, NOTICE, NEWS] }
+                status: { type: string, enum: [DRAFT, PUBLISHED], default: DRAFT }
+                categoryId: { type: string, format: uuid }
+                coverImageId: { type: string, format: uuid }
+                academicYearId: { type: string, format: uuid }
+                audiences:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      targetType: { type: string, enum: [ALL, COLLEGE, PROGRAMME, PROGRAMME_YEAR, ROLE] }
+                      collegeId: { type: string, format: uuid }
+                      programmeId: { type: string, format: uuid }
+                      yearOfStudy: { type: integer }
+                      roleTarget: { type: string }
+                mediaIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: Announcement created
+
+  /announcements/{id}:
+    get:
+      summary: Get announcement details (increments viewCount)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Full announcement with audiences and media
+    put:
+      summary: Update announcement (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Announcement updated
+    delete:
+      summary: Soft delete announcement
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Announcement deleted
+
+  /announcements/{id}/pin:
+    post:
+      summary: Toggle announcement pin status (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Pin toggled
