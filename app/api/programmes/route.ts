@@ -8,38 +8,43 @@ import { parsePagination } from "@/lib/utils/pagination";
 import { createProgrammeSchema } from "@/lib/validators/programmes";
 import { logAction } from "@/lib/audit";
 
-export const GET = withAuth(async (req) => {
-  const url = new URL(req.url);
-  const searchParams = url.searchParams;
-  const { page, pageSize, offset } = parsePagination(searchParams);
-  const collegeId = searchParams.get("collegeId");
+export async function GET(req: NextRequest) {
+  try {
+    const url = new URL(req.url);
+    const searchParams = url.searchParams;
+    const { page, pageSize, offset } = parsePagination(searchParams);
+    const collegeId = searchParams.get("collegeId");
 
-  const conditions = [isNull(programmes.deletedAt)];
-  if (collegeId) conditions.push(eq(programmes.collegeId, collegeId));
+    const conditions = [isNull(programmes.deletedAt)];
+    if (collegeId) conditions.push(eq(programmes.collegeId, collegeId));
 
-  const whereClause = and(...conditions);
+    const whereClause = and(...conditions);
 
-  const totalResult = await db.select({ count: sql<number>`count(*)` }).from(programmes).where(whereClause);
-  const total = Number(totalResult[0].count);
+    const totalResult = await db.select({ count: sql<number>`count(*)` }).from(programmes).where(whereClause);
+    const total = Number(totalResult[0].count);
 
-  const list = await db.select({
-    id: programmes.id,
-    collegeId: programmes.collegeId,
-    collegeName: colleges.name,
-    collegeShortName: colleges.shortName,
-    name: programmes.name,
-    code: programmes.code,
-    durationYears: programmes.durationYears,
-    createdAt: programmes.createdAt,
-  })
-  .from(programmes)
-  .leftJoin(colleges, eq(programmes.collegeId, colleges.id))
-  .where(whereClause)
-  .limit(pageSize).offset(offset)
-  .orderBy(asc(programmes.name));
+    const list = await db.select({
+      id: programmes.id,
+      collegeId: programmes.collegeId,
+      collegeName: colleges.name,
+      collegeShortName: colleges.shortName,
+      name: programmes.name,
+      code: programmes.code,
+      durationYears: programmes.durationYears,
+      createdAt: programmes.createdAt,
+    })
+    .from(programmes)
+    .leftJoin(colleges, eq(programmes.collegeId, colleges.id))
+    .where(whereClause)
+    .limit(pageSize).offset(offset)
+    .orderBy(asc(programmes.name));
 
-  return paginatedResponse(list, total, page, pageSize);
-});
+    return paginatedResponse(list, total, page, pageSize);
+  } catch (error) {
+    console.error("GET /api/programmes error:", error);
+    return errorResponse("Internal server error", 500);
+  }
+}
 
 export const POST = withPermission(async (req, ctx) => {
   const body = await req.json();

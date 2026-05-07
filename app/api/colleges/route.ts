@@ -9,12 +9,7 @@ import { logAction } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await authenticateRequest(req);
-    if (auth.error || !auth.user) {
-      return errorResponse(auth.error || "Unauthorized", auth.status || 401);
-    }
-
-    // Any authenticated user can list colleges (needed for registration/profile)
+    // Public endpoint: Any user (even unauthenticated) can list colleges (needed for registration)
     const collegesList = await db.select().from(colleges).orderBy(asc(colleges.shortName));
     return successResponse(collegesList);
   } catch (error) {
