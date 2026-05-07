@@ -4,6 +4,10 @@ import { roles, permissions, permissionGroups, rolePermissions, users, colleges,
 import { hashPassword } from "../auth/password";
 import { generateSlug } from "../utils/slug";
 
+function seedSlug(text: string): string {
+  return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 async function main() {
   console.log("Seeding database...");
   
@@ -169,7 +173,7 @@ async function main() {
   for (const cat of allCategories) {
     await db.insert(categories).values({
       name: cat.name,
-      slug: generateSlug(cat.name),
+      slug: seedSlug(cat.name + "-" + cat.module),
       module: cat.module,
     }).onConflictDoNothing({ target: categories.slug });
   }
@@ -188,7 +192,7 @@ async function main() {
   for (const ec of defaultEventCategories) {
     await db.insert(eventCategories).values({
       name: ec.name,
-      slug: generateSlug(ec.name),
+      slug: seedSlug("event-" + ec.name),
       iconName: ec.iconName,
     }).onConflictDoNothing({ target: eventCategories.slug });
   }
