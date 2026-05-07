@@ -15,7 +15,6 @@ This folder contains all planning, schema, API, and integration documentation fo
 
 - **Base URL (local):** `http://localhost:3000/api`
 - **Auth:** `Authorization: Bearer <jwt_token>`
-- **Admin credentials (dev):** `admin@udsminfo.com` / `rut4shell`
 - **Database:** Supabase (PostgreSQL)
 - **Push Notifications:** Firebase FCM
 

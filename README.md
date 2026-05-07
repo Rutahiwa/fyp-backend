@@ -158,10 +158,6 @@ Comments and reactions are polymorphic — wired to announcements, events, and l
 { "success": false, "message": "Error description", "errors": {} }
 ```
 
-## Admin Credentials (dev)
-- **Email**: admin@udsminfo.com
-- **Password**: rut4shell
-
 ## Tech Stack
 - **Framework**: Next.js 16 (App Router)
 - **Database**: PostgreSQL via Supabase

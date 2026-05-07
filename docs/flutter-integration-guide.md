@@ -74,8 +74,8 @@ dependencies:
 **Request Body:**
 ```json
 {
-  "email": "admin@udsminfo.com",
-  "password": "rut4shell"
+  "email": "your-email@example.com",
+  "password": "your-password"
 }
 ```
 

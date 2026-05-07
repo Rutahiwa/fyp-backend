@@ -118,19 +118,26 @@ async function main() {
   console.log("✅ Admin role permissions assigned/skipped");
 
   // 5. Setup a default Admin User
-  const hashedPassword = await hashPassword("rut4shell");
-  
-  await db.insert(users).values({
-    fullName: "Super Admin",
-    registrationNumber: "ADMIN001",
-    sex: "MALE",
-    email: "admin@udsminfo.com",
-    password: hashedPassword,
-    roleId: adminRole.id,
-    isActive: true,
-  }).onConflictDoNothing({ target: users.email });
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@udsminfo.com";
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
-  console.log("✅ Default admin user created/skipped");
+  if (!adminPassword) {
+    console.warn("⚠️  ADMIN_PASSWORD env var not set — skipping admin user creation");
+  } else {
+    const hashedPassword = await hashPassword(adminPassword);
+
+    await db.insert(users).values({
+      fullName: "Super Admin",
+      registrationNumber: "ADMIN001",
+      sex: "MALE",
+      email: adminEmail,
+      password: hashedPassword,
+      roleId: adminRole.id,
+      isActive: true,
+    }).onConflictDoNothing({ target: users.email });
+
+    console.log("✅ Default admin user created/skipped");
+  }
 
   // 6. Create Default Categories
   const announcementCategories = [
