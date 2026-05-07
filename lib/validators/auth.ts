@@ -12,7 +12,7 @@ export const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   programmeId: z.string().uuid("Programme is required"),
-  yearOfStudy: z.number().int().min(1).max(7),
+  yearOfStudy: z.number().int().min(1).max(5),
 });
 
 export const changePasswordSchema = z.object({
