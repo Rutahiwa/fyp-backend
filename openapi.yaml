@@ -1219,3 +1219,165 @@ paths:
       responses:
         '200':
           description: Reaction toggled (liked/unliked)
+
+  /lost-found:
+    get:
+      summary: List lost & found items (paginated, filterable, anonymous-safe)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema: { type: string, enum: [LOST, FOUND] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [OPEN, RESOLVED, ALL], default: OPEN }
+        - in: query
+          name: categoryId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Items (reporter stripped for anonymous items to non-admins)
+    post:
+      summary: Report a lost or found item
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, title, description, dateLostOrFound]
+              properties:
+                type: { type: string, enum: [LOST, FOUND] }
+                title: { type: string }
+                description: { type: string }
+                categoryId: { type: string, format: uuid }
+                locationSeen: { type: string }
+                dateLostOrFound: { type: string, format: date }
+                isAnonymous: { type: boolean, default: false }
+                contactInfo: { type: string }
+                mediaIds: { type: array, items: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: Item reported
+
+  /lost-found/{id}:
+    get:
+      summary: Get item details with media (anonymous-safe)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Item (reporter stripped if anonymous for non-admin)
+    put:
+      summary: Update item (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Item updated
+    delete:
+      summary: Soft delete item (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Item deleted
+
+  /lost-found/{id}/resolve:
+    post:
+      summary: Mark item as RESOLVED (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Item resolved
+
+  /lost-found/{id}/comments:
+    get:
+      summary: List comments on a lost-found item
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Array of comments
+    post:
+      summary: Post a comment
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+      responses:
+        '201':
+          description: Comment posted
+
+  /lost-found/{id}/comments/{commentId}:
+    delete:
+      summary: Delete comment (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: commentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Comment deleted
+
+  /lost-found/{id}/reactions:
+    post:
+      summary: Toggle like on a lost-found item (idempotent)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reaction toggled (liked/unliked)

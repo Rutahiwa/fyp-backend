@@ -21,3 +21,4 @@ export * from "./stories";
 export * from "./comments";
 export * from "./reactions";
 export * from "./events";
+export * from "./lost-found";

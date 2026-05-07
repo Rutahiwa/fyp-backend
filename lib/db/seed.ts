@@ -92,7 +92,10 @@ async function main() {
     // Events
     { name: "event.create", description: "Create events" },
     { name: "event.update", description: "Update events" },
-    { name: "event.delete", description: "Delete events" }
+    { name: "event.delete", description: "Delete events" },
+
+    // Lost & Found
+    { name: "lostfound.moderate", description: "Moderate lost & found items" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);
