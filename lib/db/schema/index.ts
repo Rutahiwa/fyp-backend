@@ -13,3 +13,4 @@ export * from "./programmes";
 export * from "./academic-years";
 export * from "./lecturer-assignments";
 export * from "./cr-assignments";
+export * from "./media";
