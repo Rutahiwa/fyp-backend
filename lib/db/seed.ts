@@ -1,6 +1,6 @@
 import { db } from "./index";
-import { eq } from "drizzle-orm";
-import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories } from "./schema";
+import { eq, or } from "drizzle-orm";
+import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories, programmes } from "./schema";
 import { hashPassword } from "../auth/password";
 import { generateSlug } from "../utils/slug";
 
@@ -23,6 +23,37 @@ async function main() {
   ]).onConflictDoNothing({ target: colleges.shortName });
 
   console.log("✅ Colleges created/skipped");
+
+  // 0.1 Create Programmes for CoICT & CoET
+  const targetColleges = await db.select().from(colleges).where(
+    or(eq(colleges.shortName, "CoICT"), eq(colleges.shortName, "CoET"))
+  );
+  
+  const coict = targetColleges.find(c => c.shortName === "CoICT");
+  const coet = targetColleges.find(c => c.shortName === "CoET");
+
+  if (coict) {
+    await db.insert(programmes).values([
+      { name: "Computer Science", code: "CS", durationYears: 3, collegeId: coict.id },
+      { name: "Computer Engineering and Information Technology", code: "CEIT", durationYears: 4, collegeId: coict.id },
+      { name: "Business in IT", code: "BIT", durationYears: 3, collegeId: coict.id },
+      { name: "Electronics Engineering", code: "ELE", durationYears: 4, collegeId: coict.id },
+      { name: "Electronic Science", code: "ES", durationYears: 3, collegeId: coict.id },
+    ]).onConflictDoNothing({ target: programmes.code });
+  }
+
+  if (coet) {
+    await db.insert(programmes).values([
+      { name: "Industrial Engineering", code: "IE", durationYears: 4, collegeId: coet.id },
+      { name: "Chemical and Process Engineering", code: "CPE", durationYears: 4, collegeId: coet.id },
+      { name: "Civil Engineering", code: "CE", durationYears: 4, collegeId: coet.id },
+      { name: "Electrical Engineering", code: "EE", durationYears: 4, collegeId: coet.id },
+      { name: "Mechanical Engineering", code: "ME", durationYears: 4, collegeId: coet.id },
+      { name: "Textile Engineering", code: "TXE", durationYears: 4, collegeId: coet.id },
+    ]).onConflictDoNothing({ target: programmes.code });
+  }
+
+  console.log("✅ Programmes for CoICT and CoET created/skipped");
 
   // 1. Create Default Roles
   await db.insert(roles).values([
