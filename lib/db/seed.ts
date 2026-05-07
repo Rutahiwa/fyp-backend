@@ -1,7 +1,8 @@
 import { db } from "./index";
 import { eq } from "drizzle-orm";
-import { roles, permissions, permissionGroups, rolePermissions, users, colleges } from "./schema";
+import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories } from "./schema";
 import { hashPassword } from "../auth/password";
+import { generateSlug } from "../utils/slug";
 
 async function main() {
   console.log("Seeding database...");
@@ -108,6 +109,62 @@ async function main() {
   }).onConflictDoNothing({ target: users.email });
 
   console.log("✅ Default admin user created/skipped");
+
+  // 6. Create Default Categories
+  const announcementCategories = [
+    { name: "Academic", module: "ANNOUNCEMENT" as const },
+    { name: "Administrative", module: "ANNOUNCEMENT" as const },
+    { name: "Health", module: "ANNOUNCEMENT" as const },
+    { name: "Finance", module: "ANNOUNCEMENT" as const },
+    { name: "General", module: "ANNOUNCEMENT" as const },
+  ];
+
+  const lostFoundCategories = [
+    { name: "Electronics", module: "LOST_FOUND" as const },
+    { name: "Documents", module: "LOST_FOUND" as const },
+    { name: "Clothing", module: "LOST_FOUND" as const },
+    { name: "Keys", module: "LOST_FOUND" as const },
+    { name: "Books", module: "LOST_FOUND" as const },
+    { name: "Other", module: "LOST_FOUND" as const },
+  ];
+
+  const feedbackCategories = [
+    { name: "Academic Issues", module: "FEEDBACK" as const },
+    { name: "Facilities", module: "FEEDBACK" as const },
+    { name: "Administration", module: "FEEDBACK" as const },
+    { name: "Student Welfare", module: "FEEDBACK" as const },
+    { name: "Other", module: "FEEDBACK" as const },
+  ];
+
+  const allCategories = [...announcementCategories, ...lostFoundCategories, ...feedbackCategories];
+  for (const cat of allCategories) {
+    await db.insert(categories).values({
+      name: cat.name,
+      slug: generateSlug(cat.name),
+      module: cat.module,
+    }).onConflictDoNothing({ target: categories.slug });
+  }
+  console.log("✅ Categories created/skipped");
+
+  // 7. Create Default Event Categories
+  const defaultEventCategories = [
+    { name: "Academic", iconName: "school" },
+    { name: "Sports", iconName: "sports" },
+    { name: "Religious", iconName: "church" },
+    { name: "Career", iconName: "work" },
+    { name: "Cultural", iconName: "groups" },
+    { name: "Social", iconName: "people" },
+  ];
+
+  for (const ec of defaultEventCategories) {
+    await db.insert(eventCategories).values({
+      name: ec.name,
+      slug: generateSlug(ec.name),
+      iconName: ec.iconName,
+    }).onConflictDoNothing({ target: eventCategories.slug });
+  }
+  console.log("✅ Event categories created/skipped");
+
   console.log("Database seeded successfully!");
   process.exit(0);
 }

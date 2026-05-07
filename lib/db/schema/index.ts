@@ -14,3 +14,5 @@ export * from "./academic-years";
 export * from "./lecturer-assignments";
 export * from "./cr-assignments";
 export * from "./media";
+export * from "./categories";
+export * from "./event-categories";
