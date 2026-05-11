@@ -1,6 +1,5 @@
-import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { programmes, colleges } from "@/lib/db/schema";
+import { programmes, colleges, departments } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { withAuth, withPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -10,21 +9,26 @@ import { logAction } from "@/lib/audit";
 export const GET = withAuth(async (_req, ctx) => {
   const { id } = await ctx.params;
 
-  const result = await db.select({
-    id: programmes.id,
-    collegeId: programmes.collegeId,
-    collegeName: colleges.name,
-    collegeShortName: colleges.shortName,
-    name: programmes.name,
-    code: programmes.code,
-    durationYears: programmes.durationYears,
-    createdAt: programmes.createdAt,
-    updatedAt: programmes.updatedAt,
-  })
-  .from(programmes)
-  .leftJoin(colleges, eq(programmes.collegeId, colleges.id))
-  .where(and(eq(programmes.id, id), isNull(programmes.deletedAt)))
-  .limit(1);
+  const result = await db
+    .select({
+      id: programmes.id,
+      departmentId: programmes.departmentId,
+      departmentName: departments.name,
+      departmentShortName: departments.shortName,
+      collegeId: departments.collegeId,
+      collegeName: colleges.name,
+      collegeShortName: colleges.shortName,
+      name: programmes.name,
+      code: programmes.code,
+      durationYears: programmes.durationYears,
+      createdAt: programmes.createdAt,
+      updatedAt: programmes.updatedAt,
+    })
+    .from(programmes)
+    .innerJoin(departments, eq(programmes.departmentId, departments.id))
+    .innerJoin(colleges, eq(departments.collegeId, colleges.id))
+    .where(and(eq(programmes.id, id), isNull(programmes.deletedAt)))
+    .limit(1);
 
   if (result.length === 0) return errorResponse("Programme not found", 404);
   return successResponse(result[0]);
@@ -39,6 +43,15 @@ export const PUT = withPermission(async (req, ctx) => {
   if (validation.data.code) {
     const existing = await db.select().from(programmes).where(eq(programmes.code, validation.data.code)).limit(1);
     if (existing.length > 0 && existing[0].id !== id) return errorResponse("Programme code already exists", 409);
+  }
+
+  if (validation.data.departmentId) {
+    const dept = await db
+      .select({ id: departments.id })
+      .from(departments)
+      .where(eq(departments.id, validation.data.departmentId))
+      .limit(1);
+    if (dept.length === 0) return errorResponse("Department not found", 404);
   }
 
   const [updated] = await db.update(programmes)

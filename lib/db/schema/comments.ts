@@ -7,7 +7,7 @@ export const comments = pgTable("comments", {
   authorId: uuid("author_id").notNull().references(() => users.id),
   targetId: uuid("target_id").notNull(),
   targetType: varchar("target_type", { length: 20 }).notNull(),
-  // "ANNOUNCEMENT" | "EVENT" | "LOST_FOUND"
+  // "ANNOUNCEMENT" | "EVENT" | "LOST_FOUND" | "POST"
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

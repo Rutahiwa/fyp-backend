@@ -6,14 +6,45 @@ info:
 servers:
   - url: http://localhost:3000/api
     description: Local development server
-    
+tags:
+  - name: Authentication
+    description: Registration, login, JWT, password reset, and email change
+  - name: Users
+    description: Profiles and admin user directory
+  - name: RBAC & Audit
+    description: Roles, permissions, and audit log
+  - name: Colleges & Programmes
+    description: Colleges and degree programmes
+  - name: Academic years
+    description: Academic year configuration
+  - name: Assignments
+    description: Lecturer and class representative assignments
+  - name: Media
+    description: File uploads (images, PDF, video)
+  - name: Categories
+    description: Content categories for announcements, events, and feedback
+  - name: Announcements
+    description: Announcements, comments, and reactions
+  - name: Stories
+    description: 24-hour stories
+  - name: Events
+    description: Events, RSVP, attendees, comments, and reactions
+  - name: Lost & Found
+    description: Lost and found listings
+  - name: Feedback
+    description: User feedback submissions
+  - name: Posts
+    description: Targeted posts feed (college, department, programme, groups)
+  - name: Groups
+    description: Audience segments (clubs, hostels, financial, custom)
+  - name: Admin
+    description: Admin-only operations
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   schemas:
     User:
       type: object
@@ -30,7 +61,8 @@ components:
         roleId:
           type: string
           format: uuid
-
+        roleName:
+          type: string
     SuccessResponse:
       type: object
       properties:
@@ -40,15 +72,26 @@ components:
         message:
           type: string
         data:
-          type: object
+          description: >-
+            Response payload; shape varies (object, array, or nested fields per endpoint). See examples on each
+            operation.
         meta:
           type: object
           properties:
-            total: { type: integer }
-            page: { type: integer }
-            pageSize: { type: integer }
-            totalPages: { type: integer }
-          
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            totalPages:
+              type: integer
+      example:
+        success: true
+        message: Success
+        data:
+          id: a1111111-1111-4111-8111-111111111111
+          fullName: Jane Student
     ErrorResponse:
       type: object
       properties:
@@ -59,10 +102,13 @@ components:
           type: string
         errors:
           type: object
-
+      example:
+        success: false
+        message: Validation failed
+        errors:
+          email: Invalid email format
 security:
   - bearerAuth: []
-
 paths:
   /auth/register:
     post:
@@ -74,34 +120,73 @@ paths:
           application/json:
             schema:
               type: object
-              required: [fullName, registrationNumber, course, sex, email, password]
+              required:
+                - fullName
+                - registrationNumber
+                - course
+                - sex
+                - email
+                - password
               properties:
-                fullName: { type: string }
-                registrationNumber: { type: string }
-                course: { type: string }
-                sex: { type: string, enum: ["MALE", "FEMALE"] }
-                email: { type: string, format: email }
-                password: { type: string }
+                fullName:
+                  type: string
+                registrationNumber:
+                  type: string
+                course:
+                  type: string
+                sex:
+                  type: string
+                  enum:
+                    - MALE
+                    - FEMALE
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              fullName: Jane Student
+              registrationNumber: 2021-04-12345
+              course: BSc Computer Science
+              sex: FEMALE
+              email: jane@student.udsm.ac.tz
+              password: SecurePass1!
       responses:
-        '201':
+        "201":
           description: User registered successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '400':
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: User registered successfully
+                data:
+                  id: a1111111-1111-4111-8111-111111111111
+                  fullName: Jane Student
+                  email: jane@student.udsm.ac.tz
+        "400":
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Validation error
+                errors: {}
+        "409":
           description: Email or Registration Number already exists
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Email or Registration Number already exists
+                errors: {}
+      tags:
+        - Authentication
   /auth/login:
     post:
       summary: Authenticate user and get JWT
@@ -112,26 +197,68 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required:
+                - email
+                - password
               properties:
-                email: { type: string, format: email }
-                password: { type: string }
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              email: jane@student.udsm.ac.tz
+              password: SecurePass1!
       responses:
-        '200':
+        "200":
           description: Login successful
           content:
             application/json:
               schema:
                 type: object
+                required:
+                  - success
+                  - message
+                  - data
                 properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
                   data:
                     type: object
+                    required:
+                      - token
+                      - user
                     properties:
-                      token: { type: string }
-                      user: { $ref: '#/components/schemas/User' }
-        '401':
+                      token:
+                        type: string
+                      user:
+                        $ref: "#/components/schemas/User"
+              example:
+                success: true
+                message: Login successful
+                data:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                    email: jane@student.udsm.ac.tz
+                    roleId: a5555555-5555-4555-8555-555555555555
+                    roleName: STUDENT
+        "401":
           description: Invalid credentials
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Invalid credentials
+                errors: {}
+      tags:
+        - Authentication
   /auth/generate-otp:
     post:
       summary: Request an OTP for password reset
@@ -142,13 +269,27 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email]
+              required:
+                - email
               properties:
-                email: { type: string, format: email }
+                email:
+                  type: string
+                  format: email
+            example:
+              email: jane@student.udsm.ac.tz
       responses:
-        '200':
+        "200":
           description: OTP generated and sent to email
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: OTP generated and sent to email
+                data: {}
+      tags:
+        - Authentication
   /auth/verify-otp:
     post:
       summary: Verify the OTP and get a reset token
@@ -159,22 +300,42 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, otpCode]
+              required:
+                - email
+                - otpCode
               properties:
-                email: { type: string, format: email }
-                otpCode: { type: string }
+                email:
+                  type: string
+                  format: email
+                otpCode:
+                  type: string
+            example:
+              email: jane@student.udsm.ac.tz
+              otpCode: "123456"
       responses:
-        '200':
+        "200":
           description: Returns a short-lived reset token
           content:
             application/json:
               schema:
+                type: object
                 properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
                   data:
                     type: object
                     properties:
-                      resetToken: { type: string }
-
+                      resetToken:
+                        type: string
+              example:
+                success: true
+                message: OTP verified
+                data:
+                  resetToken: short-lived-reset-token-abc123
+      tags:
+        - Authentication
   /auth/reset-password:
     post:
       summary: Consume reset token to change password
@@ -185,14 +346,30 @@ paths:
           application/json:
             schema:
               type: object
-              required: [resetToken, newPassword]
+              required:
+                - resetToken
+                - newPassword
               properties:
-                resetToken: { type: string }
-                newPassword: { type: string }
+                resetToken:
+                  type: string
+                newPassword:
+                  type: string
+            example:
+              resetToken: short-lived-reset-token-from-verify-otp
+              newPassword: NewSecurePass1!
       responses:
-        '200':
+        "200":
           description: Password reset successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Password reset successfully
+                data: {}
+      tags:
+        - Authentication
   /auth/change-password:
     post:
       summary: Change password while authenticated
@@ -202,31 +379,68 @@ paths:
           application/json:
             schema:
               type: object
-              required: [currentPassword, newPassword]
+              required:
+                - currentPassword
+                - newPassword
               properties:
-                currentPassword: { type: string }
-                newPassword: { type: string }
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+            example:
+              currentPassword: SecurePass1!
+              newPassword: NewSecurePass1!
       responses:
-        '200':
+        "200":
           description: Password changed successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Password changed successfully
+                data: {}
+      tags:
+        - Authentication
   /users:
     get:
       summary: Get paginated list of users (Admin only)
       parameters:
         - in: query
           name: page
-          schema: { type: integer, default: 1 }
+          schema:
+            type: integer
+            default: 1
         - in: query
           name: pageSize
-          schema: { type: integer, default: 20 }
+          schema:
+            type: integer
+            default: 20
         - in: query
           name: search
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200':
+        "200":
           description: Paginated response of users
-          
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Users
   /users/{id}:
     get:
       summary: Get user details by ID
@@ -234,62 +448,144 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: User details
-        '404':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: User details
+                data: {}
+        "404":
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: User not found
+                errors: {}
+      tags:
+        - Users
     put:
       summary: Update user (Admin or Self)
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                fullName: { type: string }
-                roleId: { type: string, format: uuid }
-                isActive: { type: boolean }
+                fullName:
+                  type: string
+                roleId:
+                  type: string
+                  format: uuid
+                isActive:
+                  type: boolean
+            example:
+              fullName: Jane Student Updated
+              roleId: a5555555-5555-4555-8555-555555555555
+              isActive: true
       responses:
-        '200':
+        "200":
           description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: User updated successfully
+                data: {}
+      tags:
+        - Users
     delete:
       summary: Soft delete user (Admin or Self)
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: User deleted successfully
-          
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: User deleted successfully
+                data: {}
+      tags:
+        - Users
   /audit-logs:
     get:
       summary: Get paginated audit logs (Admin only)
       parameters:
         - in: query
           name: action
-          schema: { type: string }
+          schema:
+            type: string
         - in: query
           name: userId
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200':
+        "200":
           description: Paginated response of audit logs
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - RBAC & Audit
   /roles:
     get:
       summary: List all roles
       responses:
-        '200':
+        "200":
           description: Successful response returning an array of roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a5555555-5555-4555-8555-555555555555
+                    name: STUDENT
+                    description: Default student role
+      tags:
+        - RBAC & Audit
     post:
       summary: Create a new role
       requestBody:
@@ -298,19 +594,36 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+                - name
               properties:
-                name: { type: string }
-                description: { type: string }
-                permissions: 
+                name:
+                  type: string
+                description:
+                  type: string
+                permissions:
                   type: array
                   items:
                     type: string
                     format: uuid
+            example:
+              name: custom_analyst
+              description: Read-only analytics
+              permissions:
+                - a6666666-6666-4666-8666-666666666666
       responses:
-        '201':
+        "201":
           description: Role created successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Role created successfully
+                data: {}
+      tags:
+        - RBAC & Audit
   /roles/{id}:
     get:
       summary: Get role details including its associated permissions array
@@ -318,53 +631,115 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Role details and permissions array
-        '404':
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Role details and permissions array
+                data: {}
+        "404":
           description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Role not found
+                errors: {}
+      tags:
+        - RBAC & Audit
     put:
       summary: Update a role (Admin only)
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                name: { type: string }
-                description: { type: string }
+                name:
+                  type: string
+                description:
+                  type: string
                 permissions:
                   type: array
                   items:
                     type: string
                     format: uuid
+            example:
+              name: custom_analyst
+              description: Updated description
+              permissions:
+                - a6666666-6666-4666-8666-666666666666
       responses:
-        '200':
+        "200":
           description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Role updated successfully
+                data: {}
+      tags:
+        - RBAC & Audit
     delete:
       summary: Delete a role
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Role deleted successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Role deleted successfully
+                data: {}
+      tags:
+        - RBAC & Audit
   /permissions:
     get:
       summary: Get all natively tracked system permissions
       responses:
-        '200':
+        "200":
           description: Array of system permissions
-          
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a6666666-6666-4666-8666-666666666666
+                    name: user.read
+                    description: List users
+      tags:
+        - RBAC & Audit
   /permissions/{id}:
     get:
       summary: Get specific permission
@@ -372,17 +747,41 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Permission details
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Permission details
+                data: {}
+      tags:
+        - RBAC & Audit
   /colleges:
     get:
       summary: List all colleges
       responses:
-        '200':
+        "200":
           description: Array of colleges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a2222222-2222-4222-8222-222222222222
+                    name: College of Engineering and Technology
+                    shortName: COET
+      tags:
+        - Colleges & Programmes
     post:
       summary: Create a college (admin)
       security:
@@ -393,32 +792,138 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, shortName]
+              required:
+                - name
+                - shortName
               properties:
-                name: { type: string }
-                shortName: { type: string }
+                name:
+                  type: string
+                shortName:
+                  type: string
+            example:
+              name: College of Engineering and Technology
+              shortName: COET
       responses:
-        '201':
+        "201":
           description: College created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: College created
+                data: {}
+      tags:
+        - Colleges & Programmes
+  /departments:
+    get:
+      summary: List departments (public; filter with ?collegeId=)
+      parameters:
+        - in: query
+          name: collegeId
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Departments with parent college names
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: d1111111-1111-4111-8111-111111111111
+                    collegeId: a2222222-2222-4222-8222-222222222222
+                    name: Computer Science and Information Technology
+                    shortName: CoICT-CSIT
+                    collegeName: College of Information and Communication Technologies
+                    collegeShortName: CoICT
+      tags:
+        - Colleges & Programmes
+    post:
+      summary: Create a department (requires college.manage)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - collegeId
+                - name
+                - shortName
+              properties:
+                collegeId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                shortName:
+                  type: string
+            example:
+              collegeId: a2222222-2222-4222-8222-222222222222
+              name: Computer Science and Information Technology
+              shortName: CoICT-CSIT
+      responses:
+        "201":
+          description: Department created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Department created
+                data: {}
+      tags:
+        - Colleges & Programmes
   /programmes:
     get:
-      summary: List all programmes (paginated, filterable by collegeId)
+      summary: List all programmes (paginated; filter by college via ?collegeId= — resolves through department → college)
       security:
         - bearerAuth: []
       parameters:
         - in: query
           name: collegeId
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
         - in: query
           name: page
-          schema: { type: integer, default: 1 }
+          schema:
+            type: integer
+            default: 1
         - in: query
           name: pageSize
-          schema: { type: integer, default: 20 }
+          schema:
+            type: integer
+            default: 20
       responses:
-        '200':
-          description: Paginated list of programmes with college info
+        "200":
+          description: Paginated list with department and college fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Colleges & Programmes
     post:
       summary: Create a programme (admin)
       security:
@@ -429,16 +934,39 @@ paths:
           application/json:
             schema:
               type: object
-              required: [collegeId, name, code, durationYears]
+              required:
+                - departmentId
+                - name
+                - code
+                - durationYears
               properties:
-                collegeId: { type: string, format: uuid }
-                name: { type: string }
-                code: { type: string }
-                durationYears: { type: integer }
+                departmentId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                code:
+                  type: string
+                durationYears:
+                  type: integer
+            example:
+              departmentId: d1111111-1111-4111-8111-111111111111
+              name: Computer Science and Engineering
+              code: CSE-BSC
+              durationYears: 4
       responses:
-        '201':
+        "201":
           description: Programme created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Programme created
+                data: {}
+      tags:
+        - Colleges & Programmes
   /programmes/{id}:
     get:
       summary: Get programme details
@@ -448,10 +976,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Programme details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Programme details
+                data: {}
+      tags:
+        - Colleges & Programmes
     put:
       summary: Update a programme (admin)
       security:
@@ -460,10 +1000,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Programme updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Programme updated
+                data: {}
+      tags:
+        - Colleges & Programmes
     delete:
       summary: Soft delete a programme (admin)
       security:
@@ -472,11 +1024,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Programme deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Programme deleted
+                data: {}
+      tags:
+        - Colleges & Programmes
   /academic-years:
     get:
       summary: List academic years (paginated)
@@ -485,13 +1048,34 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, default: 1 }
+          schema:
+            type: integer
+            default: 1
         - in: query
           name: pageSize
-          schema: { type: integer, default: 20 }
+          schema:
+            type: integer
+            default: 20
       responses:
-        '200':
+        "200":
           description: Paginated list of academic years
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Academic years
     post:
       summary: Create an academic year (admin)
       security:
@@ -502,24 +1086,59 @@ paths:
           application/json:
             schema:
               type: object
-              required: [label, startDate, endDate]
+              required:
+                - label
+                - startDate
+                - endDate
               properties:
-                label: { type: string }
-                startDate: { type: string, format: date }
-                endDate: { type: string, format: date }
+                label:
+                  type: string
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+            example:
+              label: 2025/2026
+              startDate: "2025-10-01"
+              endDate: "2026-07-31"
       responses:
-        '201':
+        "201":
           description: Academic year created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Academic year created
+                data: {}
+      tags:
+        - Academic years
   /academic-years/current:
     get:
       summary: Get the current academic year
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Current academic year
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  id: a7777777-7777-4777-8777-777777777777
+                  label: 2025/2026
+                  isCurrent: true
+                  startDate: "2025-10-01"
+                  endDate: "2026-07-31"
+      tags:
+        - Academic years
   /academic-years/{id}:
     get:
       summary: Get academic year details
@@ -529,10 +1148,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Academic year details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Academic year details
+                data: {}
+      tags:
+        - Academic years
     put:
       summary: Update an academic year (admin)
       security:
@@ -541,11 +1172,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Academic year updated
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Academic year updated
+                data: {}
+      tags:
+        - Academic years
   /academic-years/{id}/set-current:
     post:
       summary: Set academic year as current (admin)
@@ -555,19 +1197,47 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Academic year set as current
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Academic year set as current
+                data: {}
+      tags:
+        - Academic years
   /lecturer-assignments:
     get:
       summary: List lecturer assignments (admin)
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Paginated list with user/programme/year joins
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Assignments
     post:
       summary: Assign a lecturer to a class (admin)
       security:
@@ -578,18 +1248,49 @@ paths:
           application/json:
             schema:
               type: object
-              required: [lecturerId, programmeId, yearOfStudy, semester, subjectName, academicYearId]
+              required:
+                - lecturerId
+                - programmeId
+                - yearOfStudy
+                - semester
+                - subjectName
+                - academicYearId
               properties:
-                lecturerId: { type: string, format: uuid }
-                programmeId: { type: string, format: uuid }
-                yearOfStudy: { type: integer }
-                semester: { type: integer }
-                subjectName: { type: string }
-                academicYearId: { type: string, format: uuid }
+                lecturerId:
+                  type: string
+                  format: uuid
+                programmeId:
+                  type: string
+                  format: uuid
+                yearOfStudy:
+                  type: integer
+                semester:
+                  type: integer
+                subjectName:
+                  type: string
+                academicYearId:
+                  type: string
+                  format: uuid
+            example:
+              lecturerId: a1111111-1111-4111-8111-111111111111
+              programmeId: a3333333-3333-4333-8333-333333333333
+              yearOfStudy: 2
+              semester: 1
+              subjectName: Data Structures
+              academicYearId: a7777777-7777-4777-8777-777777777777
       responses:
-        '201':
+        "201":
           description: Lecturer assigned
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Lecturer assigned
+                data: {}
+      tags:
+        - Assignments
   /lecturer-assignments/{id}:
     delete:
       summary: Remove a lecturer assignment (admin)
@@ -599,19 +1300,47 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Assignment removed
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Assignment removed
+                data: {}
+      tags:
+        - Assignments
   /cr-assignments:
     get:
       summary: List CR assignments (admin)
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Paginated list with user/programme/year joins
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Assignments
     post:
       summary: Assign a class representative (admin, max 2 per class)
       security:
@@ -622,16 +1351,41 @@ paths:
           application/json:
             schema:
               type: object
-              required: [userId, programmeId, yearOfStudy, academicYearId]
+              required:
+                - userId
+                - programmeId
+                - yearOfStudy
+                - academicYearId
               properties:
-                userId: { type: string, format: uuid }
-                programmeId: { type: string, format: uuid }
-                yearOfStudy: { type: integer }
-                academicYearId: { type: string, format: uuid }
+                userId:
+                  type: string
+                  format: uuid
+                programmeId:
+                  type: string
+                  format: uuid
+                yearOfStudy:
+                  type: integer
+                academicYearId:
+                  type: string
+                  format: uuid
+            example:
+              userId: a1111111-1111-4111-8111-111111111111
+              programmeId: a3333333-3333-4333-8333-333333333333
+              yearOfStudy: 2
+              academicYearId: a7777777-7777-4777-8777-777777777777
       responses:
-        '201':
+        "201":
           description: CR assigned
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: CR assigned
+                data: {}
+      tags:
+        - Assignments
   /cr-assignments/{id}:
     delete:
       summary: Remove a CR assignment (admin)
@@ -641,11 +1395,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: CR assignment removed
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: CR assignment removed
+                data: {}
+      tags:
+        - Assignments
   /auth/change-email-request:
     post:
       summary: Request email change (sends OTP to new email)
@@ -657,13 +1422,27 @@ paths:
           application/json:
             schema:
               type: object
-              required: [newEmail]
+              required:
+                - newEmail
               properties:
-                newEmail: { type: string, format: email }
+                newEmail:
+                  type: string
+                  format: email
+            example:
+              newEmail: new.email@student.udsm.ac.tz
       responses:
-        '200':
+        "200":
           description: Verification code sent
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Verification code sent
+                data: {}
+      tags:
+        - Authentication
   /auth/change-email-verify:
     post:
       summary: Verify OTP and update email
@@ -675,14 +1454,31 @@ paths:
           application/json:
             schema:
               type: object
-              required: [newEmail, otpCode]
+              required:
+                - newEmail
+                - otpCode
               properties:
-                newEmail: { type: string, format: email }
-                otpCode: { type: string }
+                newEmail:
+                  type: string
+                  format: email
+                otpCode:
+                  type: string
+            example:
+              newEmail: new.email@student.udsm.ac.tz
+              otpCode: "654321"
       responses:
-        '200':
+        "200":
           description: Email changed
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Email changed
+                data: {}
+      tags:
+        - Authentication
   /media/upload:
     post:
       summary: Upload a file (images, video, PDF)
@@ -694,11 +1490,14 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required:
+                - file
               properties:
-                file: { type: string, format: binary }
+                file:
+                  type: string
+                  format: binary
       responses:
-        '201':
+        "201":
           description: File uploaded
           content:
             application/json:
@@ -708,13 +1507,31 @@ paths:
                   data:
                     type: object
                     properties:
-                      id: { type: string, format: uuid }
-                      url: { type: string }
-                      type: { type: string }
-                      mimeType: { type: string }
-                      sizeBytes: { type: integer }
-                      filename: { type: string }
-
+                      id:
+                        type: string
+                        format: uuid
+                      url:
+                        type: string
+                      type:
+                        type: string
+                      mimeType:
+                        type: string
+                      sizeBytes:
+                        type: integer
+                      filename:
+                        type: string
+              example:
+                success: true
+                message: File uploaded
+                data:
+                  id: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+                  url: https://example.supabase.co/storage/v1/object/public/...
+                  type: IMAGE
+                  mimeType: image/jpeg
+                  sizeBytes: 245760
+                  filename: photo.jpg
+      tags:
+        - Media
   /categories:
     get:
       summary: List categories (filterable by module)
@@ -723,10 +1540,28 @@ paths:
       parameters:
         - in: query
           name: module
-          schema: { type: string, enum: [ANNOUNCEMENT, LOST_FOUND, FEEDBACK] }
+          schema:
+            type: string
+            enum:
+              - ANNOUNCEMENT
+              - LOST_FOUND
+              - FEEDBACK
       responses:
-        '200':
+        "200":
           description: Array of categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a4444444-4444-4444-8444-444444444444
+                    name: Exams
+                    module: ANNOUNCEMENT
+      tags:
+        - Categories
     post:
       summary: Create a category (admin)
       security:
@@ -737,22 +1572,55 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, module]
+              required:
+                - name
+                - module
               properties:
-                name: { type: string }
-                module: { type: string, enum: [ANNOUNCEMENT, LOST_FOUND, FEEDBACK] }
+                name:
+                  type: string
+                module:
+                  type: string
+                  enum:
+                    - ANNOUNCEMENT
+                    - LOST_FOUND
+                    - FEEDBACK
+            example:
+              name: Exams
+              module: ANNOUNCEMENT
       responses:
-        '201':
+        "201":
           description: Category created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Category created
+                data: {}
+      tags:
+        - Categories
   /event-categories:
     get:
       summary: List event categories
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Array of event categories with iconName
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a4444444-4444-4444-8444-444444444444
+                    name: Workshop
+                    iconName: calendar
+      tags:
+        - Categories
     post:
       summary: Create an event category (admin)
       security:
@@ -763,14 +1631,29 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+                - name
               properties:
-                name: { type: string }
-                iconName: { type: string }
+                name:
+                  type: string
+                iconName:
+                  type: string
+            example:
+              name: Workshop
+              iconName: calendar
       responses:
-        '201':
+        "201":
           description: Event category created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Event category created
+                data: {}
+      tags:
+        - Categories
   /announcements:
     get:
       summary: Get personalized announcement feed
@@ -779,26 +1662,56 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, default: 1 }
+          schema:
+            type: integer
+            default: 1
         - in: query
           name: pageSize
-          schema: { type: integer, default: 20 }
+          schema:
+            type: integer
+            default: 20
         - in: query
           name: type
-          schema: { type: string, enum: [ANNOUNCEMENT, NOTICE, NEWS] }
+          schema:
+            type: string
+            enum:
+              - ANNOUNCEMENT
+              - NOTICE
+              - NEWS
         - in: query
           name: categoryId
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
         - in: query
           name: search
-          schema: { type: string }
+          schema:
+            type: string
         - in: query
           name: isForYou
-          schema: { type: boolean }
+          schema:
+            type: boolean
           description: Strict class-only feed (PROGRAMME_YEAR matches only)
       responses:
-        '200':
+        "200":
           description: Personalized paginated feed with author, category, coverImage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Announcements
     post:
       summary: Create an announcement
       security:
@@ -809,35 +1722,92 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, content, type, audiences]
+              required:
+                - title
+                - content
+                - type
+                - audiences
               properties:
-                title: { type: string }
-                content: { type: string }
-                excerpt: { type: string }
-                type: { type: string, enum: [ANNOUNCEMENT, NOTICE, NEWS] }
-                status: { type: string, enum: [DRAFT, PUBLISHED], default: DRAFT }
-                categoryId: { type: string, format: uuid }
-                coverImageId: { type: string, format: uuid }
-                academicYearId: { type: string, format: uuid }
+                title:
+                  type: string
+                content:
+                  type: string
+                excerpt:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - ANNOUNCEMENT
+                    - NOTICE
+                    - NEWS
+                status:
+                  type: string
+                  enum:
+                    - DRAFT
+                    - PUBLISHED
+                  default: DRAFT
+                categoryId:
+                  type: string
+                  format: uuid
+                coverImageId:
+                  type: string
+                  format: uuid
+                academicYearId:
+                  type: string
+                  format: uuid
                 audiences:
                   type: array
                   items:
                     type: object
                     properties:
-                      targetType: { type: string, enum: [ALL, COLLEGE, PROGRAMME, PROGRAMME_YEAR, ROLE] }
-                      collegeId: { type: string, format: uuid }
-                      programmeId: { type: string, format: uuid }
-                      yearOfStudy: { type: integer }
-                      roleTarget: { type: string }
+                      targetType:
+                        type: string
+                        enum:
+                          - ALL
+                          - COLLEGE
+                          - PROGRAMME
+                          - PROGRAMME_YEAR
+                          - ROLE
+                      collegeId:
+                        type: string
+                        format: uuid
+                      programmeId:
+                        type: string
+                        format: uuid
+                      yearOfStudy:
+                        type: integer
+                      roleTarget:
+                        type: string
                 mediaIds:
                   type: array
                   items:
                     type: string
                     format: uuid
+            example:
+              title: End of semester exams
+              content: <p>Please check the timetable on the notice board.</p>
+              excerpt: Exam timetable published
+              type: ANNOUNCEMENT
+              status: PUBLISHED
+              categoryId: a4444444-4444-4444-8444-444444444444
+              audiences:
+                - targetType: PROGRAMME_YEAR
+                  programmeId: a3333333-3333-4333-8333-333333333333
+                  yearOfStudy: 2
+              mediaIds: []
       responses:
-        '201':
+        "201":
           description: Announcement created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Announcement created
+                data: {}
+      tags:
+        - Announcements
   /announcements/{id}:
     get:
       summary: Get announcement details (increments viewCount)
@@ -847,10 +1817,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Full announcement with audiences and media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Full announcement with audiences and media
+                data: {}
+      tags:
+        - Announcements
     put:
       summary: Update announcement (owner or admin)
       security:
@@ -859,10 +1841,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Announcement updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Announcement updated
+                data: {}
+      tags:
+        - Announcements
     delete:
       summary: Soft delete announcement
       security:
@@ -871,11 +1865,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Announcement deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Announcement deleted
+                data: {}
+      tags:
+        - Announcements
   /announcements/{id}/pin:
     post:
       summary: Toggle announcement pin status (admin)
@@ -885,19 +1890,44 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Pin toggled
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Pin toggled
+                data: {}
+      tags:
+        - Announcements
   /stories:
     get:
       summary: List active stories (non-expired)
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Active stories with hasViewed flag, author, college, and media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a8888888-8888-4888-8888-888888888888
+                    caption: Welcome week
+                    hasViewed: false
+                    expiresAt: "2026-05-11T12:00:00.000Z"
+      tags:
+        - Stories
     post:
       summary: Create a story (admin/staff)
       security:
@@ -908,18 +1938,41 @@ paths:
           application/json:
             schema:
               type: object
-              required: [mediaId]
+              required:
+                - mediaId
               properties:
-                collegeId: { type: string, format: uuid }
-                mediaId: { type: string, format: uuid }
-                caption: { type: string }
-                backgroundColor: { type: string }
-                linkUrl: { type: string }
-                linkText: { type: string }
+                collegeId:
+                  type: string
+                  format: uuid
+                mediaId:
+                  type: string
+                  format: uuid
+                caption:
+                  type: string
+                backgroundColor:
+                  type: string
+                linkUrl:
+                  type: string
+                linkText:
+                  type: string
+            example:
+              collegeId: a2222222-2222-4222-8222-222222222222
+              mediaId: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+              caption: Welcome week highlights
+              backgroundColor: "#1e40af"
       responses:
-        '201':
+        "201":
           description: Story created (expiresAt auto-set to +24h)
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Story created (expiresAt auto-set to +24h)
+                data: {}
+      tags:
+        - Stories
   /stories/{id}:
     delete:
       summary: Soft delete a story (admin)
@@ -929,11 +1982,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Story deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Story deleted
+                data: {}
+      tags:
+        - Stories
   /stories/{id}/view:
     post:
       summary: Mark story as viewed by current user
@@ -943,11 +2007,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: View recorded
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: View recorded
+                data: {}
+      tags:
+        - Stories
   /announcements/{id}/comments:
     get:
       summary: List comments on an announcement
@@ -957,10 +2032,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Array of comments with author info, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Array of comments with author info, newest first
+                data: {}
+      tags:
+        - Announcements
     post:
       summary: Post a comment on an announcement
       security:
@@ -969,20 +2056,35 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [content]
+              required:
+                - content
               properties:
-                content: { type: string }
+                content:
+                  type: string
+            example:
+              content: Thanks for sharing!
       responses:
-        '201':
+        "201":
           description: Comment posted with author info
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment posted with author info
+                data: {}
+      tags:
+        - Announcements
   /announcements/{id}/comments/{commentId}:
     delete:
       summary: Delete a comment (owner or admin)
@@ -992,15 +2094,28 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
         - in: path
           name: commentId
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Comment deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment deleted
+                data: {}
+      tags:
+        - Announcements
   /announcements/{id}/reactions:
     post:
       summary: Toggle like on an announcement (idempotent)
@@ -1010,11 +2125,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Reaction toggled (liked/unliked)
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Reaction toggled (liked/unliked)
+                data: {}
+      tags:
+        - Announcements
   /events:
     get:
       summary: List events (filterable, paginated)
@@ -1023,22 +2149,53 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, default: 1 }
+          schema:
+            type: integer
+            default: 1
         - in: query
           name: pageSize
-          schema: { type: integer, default: 20 }
+          schema:
+            type: integer
+            default: 20
         - in: query
           name: categoryId
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
         - in: query
           name: status
-          schema: { type: string, enum: [DRAFT, PUBLISHED, CANCELLED, ALL], default: PUBLISHED }
+          schema:
+            type: string
+            enum:
+              - DRAFT
+              - PUBLISHED
+              - CANCELLED
+              - ALL
+            default: PUBLISHED
         - in: query
           name: upcoming
-          schema: { type: boolean }
+          schema:
+            type: boolean
       responses:
-        '200':
+        "200":
           description: Paginated events with goingCount, organizer, category, coverImage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Events
     post:
       summary: Create an event
       security:
@@ -1049,23 +2206,66 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, description, categoryId, startDateTime, endDateTime]
+              required:
+                - title
+                - description
+                - categoryId
+                - startDateTime
+                - endDateTime
               properties:
-                title: { type: string }
-                description: { type: string }
-                categoryId: { type: string, format: uuid }
-                status: { type: string, enum: [DRAFT, PUBLISHED, CANCELLED] }
-                location: { type: string }
-                locationUrl: { type: string }
-                startDateTime: { type: string, format: date-time }
-                endDateTime: { type: string, format: date-time }
-                maxAttendees: { type: integer }
-                coverImageId: { type: string, format: uuid }
-                academicYearId: { type: string, format: uuid }
+                title:
+                  type: string
+                description:
+                  type: string
+                categoryId:
+                  type: string
+                  format: uuid
+                status:
+                  type: string
+                  enum:
+                    - DRAFT
+                    - PUBLISHED
+                    - CANCELLED
+                location:
+                  type: string
+                locationUrl:
+                  type: string
+                startDateTime:
+                  type: string
+                  format: date-time
+                endDateTime:
+                  type: string
+                  format: date-time
+                maxAttendees:
+                  type: integer
+                coverImageId:
+                  type: string
+                  format: uuid
+                academicYearId:
+                  type: string
+                  format: uuid
+            example:
+              title: "Tech talk: cloud basics"
+              description: Introduction to cloud computing for undergraduates.
+              categoryId: a4444444-4444-4444-8444-444444444444
+              location: LT1
+              startDateTime: "2026-06-15T14:00:00.000Z"
+              endDateTime: "2026-06-15T16:00:00.000Z"
+              maxAttendees: 50
+              status: PUBLISHED
       responses:
-        '201':
+        "201":
           description: Event created
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Event created
+                data: {}
+      tags:
+        - Events
   /events/{id}:
     get:
       summary: Get event details with RSVP counts
@@ -1075,10 +2275,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Full event with goingCount, interestedCount
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Full event with goingCount, interestedCount
+                data: {}
+      tags:
+        - Events
     put:
       summary: Update an event
       security:
@@ -1087,10 +2299,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Event updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Event updated
+                data: {}
+      tags:
+        - Events
     delete:
       summary: Soft delete an event
       security:
@@ -1099,11 +2323,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Event deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Event deleted
+                data: {}
+      tags:
+        - Events
   /events/{id}/rsvp:
     post:
       summary: Create or update RSVP (upsert, capacity-checked)
@@ -1113,19 +2348,39 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [status]
+              required:
+                - status
               properties:
-                status: { type: string, enum: [GOING, INTERESTED, NOT_GOING] }
+                status:
+                  type: string
+                  enum:
+                    - GOING
+                    - INTERESTED
+                    - NOT_GOING
+            example:
+              status: GOING
       responses:
-        '200':
+        "200":
           description: RSVP updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: RSVP updated
+                data: {}
+      tags:
+        - Events
     delete:
       summary: Remove RSVP
       security:
@@ -1134,11 +2389,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: RSVP removed
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: RSVP removed
+                data: {}
+      tags:
+        - Events
   /events/{id}/attendees:
     get:
       summary: List attendees going to event (admin)
@@ -1148,11 +2414,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: List of users with GOING status
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: List of users with GOING status
+                data: {}
+      tags:
+        - Events
   /events/{id}/comments:
     get:
       summary: List comments on an event
@@ -1162,10 +2439,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Array of comments with author info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Array of comments with author info
+                data: {}
+      tags:
+        - Events
     post:
       summary: Post a comment on an event
       security:
@@ -1174,20 +2463,35 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [content]
+              required:
+                - content
               properties:
-                content: { type: string }
+                content:
+                  type: string
+            example:
+              content: Looking forward to it.
       responses:
-        '201':
+        "201":
           description: Comment posted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment posted
+                data: {}
+      tags:
+        - Events
   /events/{id}/comments/{commentId}:
     delete:
       summary: Delete a comment on an event (owner or admin)
@@ -1197,15 +2501,28 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
         - in: path
           name: commentId
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Comment deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment deleted
+                data: {}
+      tags:
+        - Events
   /events/{id}/reactions:
     post:
       summary: Toggle like on an event (idempotent)
@@ -1215,11 +2532,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Reaction toggled (liked/unliked)
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Reaction toggled (liked/unliked)
+                data: {}
+      tags:
+        - Events
   /lost-found:
     get:
       summary: List lost & found items (paginated, filterable, anonymous-safe)
@@ -1228,16 +2556,45 @@ paths:
       parameters:
         - in: query
           name: type
-          schema: { type: string, enum: [LOST, FOUND] }
+          schema:
+            type: string
+            enum:
+              - LOST
+              - FOUND
         - in: query
           name: status
-          schema: { type: string, enum: [OPEN, RESOLVED, ALL], default: OPEN }
+          schema:
+            type: string
+            enum:
+              - OPEN
+              - RESOLVED
+              - ALL
+            default: OPEN
         - in: query
           name: categoryId
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Items (reporter stripped for anonymous items to non-admins)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Lost & Found
     post:
       summary: Report a lost or found item
       security:
@@ -1248,21 +2605,62 @@ paths:
           application/json:
             schema:
               type: object
-              required: [type, title, description, dateLostOrFound]
+              required:
+                - type
+                - title
+                - description
+                - dateLostOrFound
               properties:
-                type: { type: string, enum: [LOST, FOUND] }
-                title: { type: string }
-                description: { type: string }
-                categoryId: { type: string, format: uuid }
-                locationSeen: { type: string }
-                dateLostOrFound: { type: string, format: date }
-                isAnonymous: { type: boolean, default: false }
-                contactInfo: { type: string }
-                mediaIds: { type: array, items: { type: string, format: uuid } }
+                type:
+                  type: string
+                  enum:
+                    - LOST
+                    - FOUND
+                title:
+                  type: string
+                description:
+                  type: string
+                categoryId:
+                  type: string
+                  format: uuid
+                locationSeen:
+                  type: string
+                dateLostOrFound:
+                  type: string
+                  format: date
+                isAnonymous:
+                  type: boolean
+                  default: false
+                contactInfo:
+                  type: string
+                mediaIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+            example:
+              type: LOST
+              title: Lost student ID card
+              description: Black lanyard, name Jane Student
+              categoryId: a4444444-4444-4444-8444-444444444444
+              locationSeen: Library ground floor
+              dateLostOrFound: "2026-05-01"
+              isAnonymous: false
+              contactInfo: "+255700000000"
+              mediaIds: []
       responses:
-        '201':
+        "201":
           description: Item reported
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Item reported
+                data: {}
+      tags:
+        - Lost & Found
   /lost-found/{id}:
     get:
       summary: Get item details with media (anonymous-safe)
@@ -1272,10 +2670,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Item (reporter stripped if anonymous for non-admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Item (reporter stripped if anonymous for non-admin)
+                data: {}
+      tags:
+        - Lost & Found
     put:
       summary: Update item (owner or admin)
       security:
@@ -1284,10 +2694,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Item updated
+                data: {}
+      tags:
+        - Lost & Found
     delete:
       summary: Soft delete item (owner or admin)
       security:
@@ -1296,11 +2718,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Item deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Item deleted
+                data: {}
+      tags:
+        - Lost & Found
   /lost-found/{id}/resolve:
     post:
       summary: Mark item as RESOLVED (owner or admin)
@@ -1310,11 +2743,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Item resolved
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Item resolved
+                data: {}
+      tags:
+        - Lost & Found
   /lost-found/{id}/comments:
     get:
       summary: List comments on a lost-found item
@@ -1324,10 +2768,22 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Array of comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Array of comments
+                data: {}
+      tags:
+        - Lost & Found
     post:
       summary: Post a comment
       security:
@@ -1336,20 +2792,35 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [content]
+              required:
+                - content
               properties:
-                content: { type: string }
+                content:
+                  type: string
+            example:
+              content: I saw it at the help desk.
       responses:
-        '201':
+        "201":
           description: Comment posted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment posted
+                data: {}
+      tags:
+        - Lost & Found
   /lost-found/{id}/comments/{commentId}:
     delete:
       summary: Delete comment (owner or admin)
@@ -1359,15 +2830,28 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
         - in: path
           name: commentId
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Comment deleted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment deleted
+                data: {}
+      tags:
+        - Lost & Found
   /lost-found/{id}/reactions:
     post:
       summary: Toggle like on a lost-found item (idempotent)
@@ -1377,19 +2861,727 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       responses:
-        '200':
+        "200":
           description: Reaction toggled (liked/unliked)
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Reaction toggled (liked/unliked)
+                data: {}
+      tags:
+        - Lost & Found
+  /posts:
+    get:
+      summary: Personalised targeted-posts feed (audience-matched; admin/staff see all published)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Personalised paginated feed; each item includes author and optional media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    summary: Sample row
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+      tags:
+        - Posts
+    post:
+      summary: Create a targeted post (post.create)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+                - audiences
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - POST
+                    - NOTICE
+                    - ALERT
+                status:
+                  type: string
+                  enum:
+                    - DRAFT
+                    - PUBLISHED
+                mediaId:
+                  type: string
+                  format: uuid
+                audiences:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - targetType
+                    properties:
+                      targetType:
+                        type: string
+                        enum:
+                          - ALL
+                          - ROLE
+                          - COLLEGE
+                          - DEPARTMENT
+                          - PROGRAMME
+                          - PROGRAMME_YEAR
+                          - GROUP
+                      collegeId:
+                        type: string
+                        format: uuid
+                      departmentId:
+                        type: string
+                        format: uuid
+                      programmeId:
+                        type: string
+                        format: uuid
+                      yearOfStudy:
+                        type: integer
+                      roleTarget:
+                        type: string
+                      groupId:
+                        type: string
+                        format: uuid
+            example:
+              title: First XI toolkit pickup
+              content: "<p>CS first team: collect new kits at the sports office Monday 9am.</p>"
+              type: POST
+              status: PUBLISHED
+              audiences:
+                - targetType: PROGRAMME
+                  programmeId: a3333333-3333-4333-8333-333333333333
+      responses:
+        "201":
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Post created
+                data: {}
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Validation failed
+                errors: {}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "403":
+          description: Missing post.create permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Missing post.create permission
+                errors: {}
+      tags:
+        - Posts
+  /posts/{id}:
+    get:
+      summary: Get post detail (visibility-checked; increments viewCount)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Post detail (viewCount incremented asynchronously)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  id: a8888888-8888-4888-8888-888888888888
+                  title: First XI toolkit pickup
+                  content: <p>Collect kits Monday 9am.</p>
+                  type: POST
+                  status: PUBLISHED
+                  isPinned: false
+                  viewCount: 12
+                  publishedAt: "2026-05-09T08:00:00.000Z"
+                  createdAt: "2026-05-09T08:00:00.000Z"
+                  updatedAt: "2026-05-09T08:00:00.000Z"
+                  author:
+                    id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                  media: null
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "404":
+          description: Post not found or not visible to this user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Post not found or not visible to this user
+                errors: {}
+      tags:
+        - Posts
+    put:
+      summary: Update post (post.update)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Post updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Post updated
+                data: {}
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Validation failed
+                errors: {}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "403":
+          description: Missing post.update or not the author
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Missing post.update or not the author
+                errors: {}
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Post not found
+                errors: {}
+      tags:
+        - Posts
+    delete:
+      summary: Soft delete post (post.delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Post deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Post deleted
+                data: {}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "403":
+          description: Missing post.delete or not the author
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Missing post.delete or not the author
+                errors: {}
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Post not found
+                errors: {}
+      tags:
+        - Posts
+  /posts/{id}/comments:
+    get:
+      summary: List comments on a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of comments with author names
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
+                    content: Thanks for the update!
+                    createdAt: "2026-05-10T12:00:00.000Z"
+                    authorId: a1111111-1111-4111-8111-111111111111
+                    authorName: Jane Student
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Post not found
+                errors: {}
+      tags:
+        - Posts
+    post:
+      summary: Post a comment on a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment created
+                data: {}
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Validation failed
+                errors: {}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Post not found
+                errors: {}
+      tags:
+        - Posts
+  /posts/{id}/comments/{commentId}:
+    delete:
+      summary: Delete a comment (owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: commentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Comment deleted or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Comment deleted or updated
+                data: {}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Forbidden
+                errors: {}
+        "404":
+          description: Comment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Comment not found
+                errors: {}
+      tags:
+        - Posts
+  /posts/{id}/reactions:
+    post:
+      summary: Toggle like on a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reaction toggled (liked/unliked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Reaction toggled (liked/unliked)
+                data: {}
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Unauthorized
+                errors: {}
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                success: false
+                message: Post not found
+                errors: {}
+      tags:
+        - Posts
+  /post:
+    $ref: "#/paths/~1posts"
+  /post/{id}:
+    $ref: "#/paths/~1posts~1{id}"
+  /post/{id}/comments:
+    $ref: "#/paths/~1posts~1{id}~1comments"
+  /post/{id}/comments/{commentId}:
+    $ref: "#/paths/~1posts~1{id}~1comments~1{commentId}"
+  /post/{id}/reactions:
+    $ref: "#/paths/~1posts~1{id}~1reactions"
+  /groups:
+    get:
+      summary: List active groups (?type=HOSTEL|CLUB|… optional)
+      security:
+        - bearerAuth: []
+      tags:
+        - Groups
+    post:
+      summary: Create a group (group.manage)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - type
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - HOSTEL
+                    - HOSTEL_BLOCK
+                    - CLUB
+                    - FINANCIAL
+                    - CUSTOM
+                parentId:
+                  type: string
+                  format: uuid
+                description:
+                  type: string
+            example:
+              name: Chess Club
+              type: CLUB
+              description: UDSM chess society
+      tags:
+        - Groups
+  /groups/{id}/members:
+    get:
+      summary: List group members (group.manage)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags:
+        - Groups
+    post:
+      summary: Add members to group (group.manage)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userIds
+              properties:
+                userIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                metadata:
+                  type: object
+            example:
+              userIds:
+                - a1111111-1111-4111-8111-111111111111
+      tags:
+        - Groups
+  /groups/{id}/members/{userId}:
+    delete:
+      summary: Remove member from group (group.manage)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags:
+        - Groups
   /feedback:
     get:
       summary: List current user's feedback submissions
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Array of user's feedback with status and admin notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
+                    subject: App suggestion
+                    status: PENDING
+                    description: Dark mode would help.
+      tags:
+        - Feedback
     post:
       summary: Submit feedback
       security:
@@ -1400,15 +3592,35 @@ paths:
           application/json:
             schema:
               type: object
-              required: [categoryId, subject, description]
+              required:
+                - categoryId
+                - subject
+                - description
               properties:
-                categoryId: { type: string, format: uuid }
-                subject: { type: string }
-                description: { type: string }
+                categoryId:
+                  type: string
+                  format: uuid
+                subject:
+                  type: string
+                description:
+                  type: string
+            example:
+              categoryId: cccccccc-cccc-4ccc-8ccc-cccccccccccc
+              subject: App suggestion
+              description: Dark mode would be helpful on the mobile app.
       responses:
-        '201':
+        "201":
           description: Feedback submitted
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Feedback submitted
+                data: {}
+      tags:
+        - Feedback
   /admin/feedback:
     get:
       summary: List all feedback submissions (admin, filterable by status)
@@ -1417,17 +3629,42 @@ paths:
       parameters:
         - in: query
           name: status
-          schema: { type: string, enum: [PENDING, REVIEWED, RESOLVED] }
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - REVIEWED
+              - RESOLVED
         - in: query
           name: page
-          schema: { type: integer, default: 1 }
+          schema:
+            type: integer
+            default: 1
         - in: query
           name: pageSize
-          schema: { type: integer, default: 20 }
+          schema:
+            type: integer
+            default: 20
       responses:
-        '200':
+        "200":
           description: Paginated list of all feedback with user info
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Success
+                data:
+                  - id: a1111111-1111-4111-8111-111111111111
+                    fullName: Jane Student
+                meta:
+                  total: 42
+                  page: 1
+                  pageSize: 20
+                  totalPages: 3
+      tags:
+        - Admin
   /admin/feedback/{id}:
     put:
       summary: Update feedback status and admin notes
@@ -1437,17 +3674,39 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [status]
+              required:
+                - status
               properties:
-                status: { type: string, enum: [PENDING, REVIEWED, RESOLVED] }
-                adminNotes: { type: string }
+                status:
+                  type: string
+                  enum:
+                    - PENDING
+                    - REVIEWED
+                    - RESOLVED
+                adminNotes:
+                  type: string
+            example:
+              status: REVIEWED
+              adminNotes: Logged for product backlog.
       responses:
-        '200':
+        "200":
           description: Feedback updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+                message: Feedback updated
+                data: {}
+      tags:
+        - Admin

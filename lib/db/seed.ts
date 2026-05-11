@@ -1,6 +1,6 @@
 import { db } from "./index";
 import { eq, or } from "drizzle-orm";
-import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories, programmes } from "./schema";
+import { roles, permissions, permissionGroups, rolePermissions, users, colleges, categories, eventCategories, programmes, departments } from "./schema";
 import { hashPassword } from "../auth/password";
 import { generateSlug } from "../utils/slug";
 
@@ -24,7 +24,7 @@ async function main() {
 
   console.log("✅ Colleges created/skipped");
 
-  // 0.1 Create Programmes for CoICT & CoET
+  // 0.1 Create departments & programmes for CoICT & CoET
   const targetColleges = await db.select().from(colleges).where(
     or(eq(colleges.shortName, "CoICT"), eq(colleges.shortName, "CoET"))
   );
@@ -32,28 +32,74 @@ async function main() {
   const coict = targetColleges.find(c => c.shortName === "CoICT");
   const coet = targetColleges.find(c => c.shortName === "CoET");
 
+  let coictCsitDeptId: string | undefined;
+  let coictElectDeptId: string | undefined;
+  let coetEngDeptId: string | undefined;
+
   if (coict) {
-    await db.insert(programmes).values([
-      { name: "Computer Science", code: "CS", durationYears: 3, collegeId: coict.id },
-      { name: "Computer Engineering and Information Technology", code: "CEIT", durationYears: 4, collegeId: coict.id },
-      { name: "Business in IT", code: "BIT", durationYears: 3, collegeId: coict.id },
-      { name: "Electronics Engineering", code: "ELE", durationYears: 4, collegeId: coict.id },
-      { name: "Electronic Science", code: "ES", durationYears: 3, collegeId: coict.id },
-    ]).onConflictDoNothing({ target: programmes.code });
+    await db
+      .insert(departments)
+      .values([
+        {
+          collegeId: coict.id,
+          name: "Computer Science and Information Technology",
+          shortName: "CoICT-CSIT",
+        },
+        {
+          collegeId: coict.id,
+          name: "Electronics and Telecommunications Engineering",
+          shortName: "CoICT-ENGT",
+        },
+      ])
+      .onConflictDoNothing({ target: [departments.collegeId, departments.shortName] });
+
+    const coictDepts = await db
+      .select()
+      .from(departments)
+      .where(eq(departments.collegeId, coict.id));
+    coictCsitDeptId = coictDepts.find((d) => d.shortName === "CoICT-CSIT")?.id;
+    coictElectDeptId = coictDepts.find((d) => d.shortName === "CoICT-ENGT")?.id;
   }
 
   if (coet) {
+    await db
+      .insert(departments)
+      .values({
+        collegeId: coet.id,
+        name: "Engineering Sciences",
+        shortName: "CoET-ENG",
+      })
+      .onConflictDoNothing({ target: [departments.collegeId, departments.shortName] });
+
+    const coetDepts = await db
+      .select()
+      .from(departments)
+      .where(eq(departments.collegeId, coet.id));
+    coetEngDeptId = coetDepts.find((d) => d.shortName === "CoET-ENG")?.id;
+  }
+
+  if (coict && coictCsitDeptId && coictElectDeptId) {
     await db.insert(programmes).values([
-      { name: "Industrial Engineering", code: "IE", durationYears: 4, collegeId: coet.id },
-      { name: "Chemical and Process Engineering", code: "CPE", durationYears: 4, collegeId: coet.id },
-      { name: "Civil Engineering", code: "CE", durationYears: 4, collegeId: coet.id },
-      { name: "Electrical Engineering", code: "EE", durationYears: 4, collegeId: coet.id },
-      { name: "Mechanical Engineering", code: "ME", durationYears: 4, collegeId: coet.id },
-      { name: "Textile Engineering", code: "TXE", durationYears: 4, collegeId: coet.id },
+      { name: "Computer Science", code: "CS", durationYears: 3, departmentId: coictCsitDeptId },
+      { name: "Computer Engineering and Information Technology", code: "CEIT", durationYears: 4, departmentId: coictCsitDeptId },
+      { name: "Business in IT", code: "BIT", durationYears: 3, departmentId: coictCsitDeptId },
+      { name: "Electronics Engineering", code: "ELE", durationYears: 4, departmentId: coictElectDeptId },
+      { name: "Electronic Science", code: "ES", durationYears: 3, departmentId: coictElectDeptId },
     ]).onConflictDoNothing({ target: programmes.code });
   }
 
-  console.log("✅ Programmes for CoICT and CoET created/skipped");
+  if (coet && coetEngDeptId) {
+    await db.insert(programmes).values([
+      { name: "Industrial Engineering", code: "IE", durationYears: 4, departmentId: coetEngDeptId },
+      { name: "Chemical and Process Engineering", code: "CPE", durationYears: 4, departmentId: coetEngDeptId },
+      { name: "Civil Engineering", code: "CE", durationYears: 4, departmentId: coetEngDeptId },
+      { name: "Electrical Engineering", code: "EE", durationYears: 4, departmentId: coetEngDeptId },
+      { name: "Mechanical Engineering", code: "ME", durationYears: 4, departmentId: coetEngDeptId },
+      { name: "Textile Engineering", code: "TXE", durationYears: 4, departmentId: coetEngDeptId },
+    ]).onConflictDoNothing({ target: programmes.code });
+  }
+
+  console.log("✅ Departments & programmes for CoICT and CoET created/skipped");
 
   // 1. Create Default Roles
   await db.insert(roles).values([
@@ -61,13 +107,15 @@ async function main() {
     { name: "student", description: "Student user" },
     { name: "staff", description: "University staff member" },
     { name: "lecturer", description: "University lecturer" },
-    { name: "class_representative", description: "Class representative" }
+    { name: "class_representative", description: "Class representative" },
+    { name: "sports_leader", description: "Sports / activities coordinator" }
   ]).onConflictDoNothing({ target: roles.name });
   
   // Get admin role ID for later use
   const adminRoleResult = await db.select().from(roles).where(eq(roles.name, "admin")).limit(1);
   const adminRole = adminRoleResult[0];
-  
+  if (!adminRole) throw new Error("Admin role missing after insert — check DB roles table");
+
   console.log("✅ Roles created/skipped");
 
   // 2. Create Permission Groups
@@ -134,44 +182,231 @@ async function main() {
 
     // Feedback
     { name: "feedback.submit", description: "Submit feedback" },
-    { name: "feedback.manage", description: "Manage feedback submissions" }
+    { name: "feedback.manage", description: "Manage feedback submissions" },
+
+    // Targeted posts & groups
+    { name: "post.create", description: "Create targeted posts" },
+    { name: "post.update", description: "Update targeted posts" },
+    { name: "post.delete", description: "Delete targeted posts" },
+    { name: "group.manage", description: "Manage groups and memberships" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);
+  const permByName = new Map(createdPermissions.map((p) => [p.name, p.id]));
 
   console.log("✅ Permissions created/skipped");
 
-  // 4. Assign all permissions to Admin role
-  const rolePermissionAssignments = createdPermissions.map(p => ({
+  async function grantRolePermissions(roleName: string, names: readonly string[]) {
+    const r = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, roleName)).limit(1);
+    if (!r[0]) {
+      console.warn(`⚠️  Role "${roleName}" not found — skipping permission grant`);
+      return;
+    }
+    const rows: { roleId: string; permissionId: string }[] = [];
+    for (const n of names) {
+      const pid = permByName.get(n);
+      if (!pid) console.warn(`⚠️  Unknown permission "${n}" — check seed vs API`);
+      else rows.push({ roleId: r[0].id, permissionId: pid });
+    }
+    if (rows.length === 0) return;
+    await db.insert(rolePermissions).values(rows).onConflictDoNothing({
+      target: [rolePermissions.roleId, rolePermissions.permissionId],
+    });
+  }
+
+  // 4. Admin: full access (every permission row)
+  const adminAssignments = createdPermissions.map((p) => ({
     roleId: adminRole.id,
     permissionId: p.id,
   }));
-  
-  await db.insert(rolePermissions).values(rolePermissionAssignments)
-    .onConflictDoNothing({ target: [rolePermissions.roleId, rolePermissions.permissionId] });
-  
+  await db.insert(rolePermissions).values(adminAssignments).onConflictDoNothing({
+    target: [rolePermissions.roleId, rolePermissions.permissionId],
+  });
   console.log("✅ Admin role permissions assigned/skipped");
 
-  // 5. Setup a default Admin User
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@udsminfo.com";
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  /**
+   * Non-admin roles — aligned with `withPermission` / `checkPermission` in `app/api/**`.
+   * Students rely on JWT-only routes (feed, lost-found, feedback, media); no permission rows required.
+   */
+  const staffPerms = [
+    "user.read",
+    "user.update",
+    "role.read",
+    "permission.read",
+    "college.read",
+    "college.manage",
+    "programme.manage",
+    "academic_year.manage",
+    "assignment.manage",
+    "announcement.create",
+    "announcement.update",
+    "announcement.delete",
+    "announcement.pin",
+    "story.create",
+    "story.delete",
+    "event.create",
+    "event.update",
+    "event.delete",
+    "lostfound.moderate",
+    "feedback.manage",
+    "audit.read",
+    "post.create",
+    "post.update",
+    "post.delete",
+    "group.manage",
+  ] as const;
 
-  if (!adminPassword) {
-    console.warn("⚠️  ADMIN_PASSWORD env var not set — skipping admin user creation");
+  const lecturerPerms = [
+    "user.read",
+    "college.read",
+    "role.read",
+    "permission.read",
+    "programme.manage",
+    "assignment.manage",
+    "announcement.create",
+    "announcement.update",
+    "announcement.delete",
+    "event.create",
+    "event.update",
+    "event.delete",
+    "story.create",
+    "story.delete",
+  ] as const;
+
+  const crPerms = ["user.read", "college.read", "post.create", "announcement.create"] as const;
+
+  const sportsLeaderPerms = [
+    "user.read",
+    "college.read",
+    "post.create",
+    "post.update",
+    "post.delete",
+    "event.create",
+    "event.update",
+    "event.delete",
+    "story.create",
+  ] as const;
+
+  await grantRolePermissions("staff", staffPerms);
+  await grantRolePermissions("lecturer", lecturerPerms);
+  await grantRolePermissions("class_representative", crPerms);
+  await grantRolePermissions("sports_leader", sportsLeaderPerms);
+  await grantRolePermissions("student", ["feedback.submit", "college.read"]);
+
+  console.log("✅ Staff, lecturer, CR, sports_leader, student permissions assigned/skipped");
+
+  /**
+   * One of ADMIN_PASSWORD, SEED_PASSWORD, or SEED_DEMO_PASSWORD is enough to hash and insert
+   * the admin account plus demo users (same bcrypt hash for all inserts in this run).
+   */
+  const seedUserPassword =
+    process.env.ADMIN_PASSWORD?.trim() ||
+    process.env.SEED_PASSWORD?.trim() ||
+    process.env.SEED_DEMO_PASSWORD?.trim();
+
+  if (!seedUserPassword) {
+    console.warn(
+      "⚠️  Set ADMIN_PASSWORD, SEED_PASSWORD, or SEED_DEMO_PASSWORD to create admin + demo users (pnpm db:seed).",
+    );
   } else {
-    const hashedPassword = await hashPassword(adminPassword);
+    const hashedUserPassword = await hashPassword(seedUserPassword);
+    const adminEmail = process.env.ADMIN_EMAIL?.trim() || "admin@udsminfo.com";
 
-    await db.insert(users).values({
-      fullName: "Super Admin",
-      registrationNumber: "ADMIN001",
-      sex: "MALE",
-      email: adminEmail,
-      password: hashedPassword,
-      roleId: adminRole.id,
-      isActive: true,
-    }).onConflictDoNothing({ target: users.email });
+    await db
+      .insert(users)
+      .values({
+        fullName: "Super Admin",
+        registrationNumber: "ADMIN001",
+        sex: "MALE",
+        email: adminEmail,
+        password: hashedUserPassword,
+        roleId: adminRole.id,
+        isActive: true,
+      })
+      .onConflictDoNothing({ target: users.email });
 
-    console.log("✅ Default admin user created/skipped");
+    console.log("✅ Admin user created/skipped (%s)", adminEmail);
+
+    const [coictCollege] = await db.select().from(colleges).where(eq(colleges.shortName, "CoICT")).limit(1);
+    const [csProgramme] = await db.select().from(programmes).where(eq(programmes.code, "CS")).limit(1);
+
+    const roleRows = await db.select({ id: roles.id, name: roles.name }).from(roles);
+    const ridFor = (name: string) => roleRows.find((r) => r.name === name)?.id;
+
+    type DemoRow = {
+      fullName: string;
+      registrationNumber: string;
+      email: string;
+      sex: "MALE" | "FEMALE";
+      roleName: string;
+      attachProgramme?: boolean;
+      yearOfStudy?: number;
+    };
+
+    const demos: DemoRow[] = [
+      {
+        fullName: "Demo Staff",
+        registrationNumber: "STAFF-DEMO-01",
+        email: "staff.demo@udsm.local",
+        sex: "MALE",
+        roleName: "staff",
+      },
+      {
+        fullName: "Demo Lecturer",
+        registrationNumber: "LECT-DEMO-01",
+        email: "lecturer.demo@udsm.local",
+        sex: "FEMALE",
+        roleName: "lecturer",
+      },
+      {
+        fullName: "Demo Student",
+        registrationNumber: "2021-04-DEMO01",
+        email: "student.demo@udsm.local",
+        sex: "MALE",
+        roleName: "student",
+        attachProgramme: true,
+        yearOfStudy: 2,
+      },
+      {
+        fullName: "Demo Class Rep",
+        registrationNumber: "CR-DEMO-01",
+        email: "cr.demo@udsm.local",
+        sex: "FEMALE",
+        roleName: "class_representative",
+        attachProgramme: true,
+        yearOfStudy: 3,
+      },
+      {
+        fullName: "Demo Sports Leader",
+        registrationNumber: "SPORT-DEMO-01",
+        email: "sports.demo@udsm.local",
+        sex: "MALE",
+        roleName: "sports_leader",
+      },
+    ];
+
+    for (const d of demos) {
+      const roleId = ridFor(d.roleName);
+      if (!roleId) continue;
+      const useProg = Boolean(d.attachProgramme && coictCollege && csProgramme);
+      await db
+        .insert(users)
+        .values({
+          fullName: d.fullName,
+          registrationNumber: d.registrationNumber,
+          sex: d.sex,
+          email: d.email,
+          password: hashedUserPassword,
+          roleId,
+          collegeId: coictCollege?.id ?? null,
+          programmeId: useProg && csProgramme ? csProgramme.id : null,
+          yearOfStudy: d.yearOfStudy ?? null,
+          isActive: true,
+        })
+        .onConflictDoNothing({ target: users.email });
+    }
+
+    console.log("✅ Demo users created/skipped (*@udsm.local, same password as above env)");
   }
 
   // 6. Create Default Categories

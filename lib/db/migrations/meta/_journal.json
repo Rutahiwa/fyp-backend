@@ -22,6 +22,20 @@
       "when": 1778090676518,
       "tag": "0002_faithful_texas_twister",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779100000000,
+      "tag": "0012_departments_programme_restructure",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0013_posts_groups",
+      "breakpoints": true
     }
   ]
 }
