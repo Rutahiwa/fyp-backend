@@ -6,7 +6,7 @@ import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
 import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
-import { X, Plus, Loader2, Building, Trash2 } from 'lucide-react';
+import { X, Plus, Loader2, Building, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -29,6 +29,7 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
   const [collegeId, setCollegeId] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const { data: collegesData, isLoading: isLoadingColleges } = useColleges();
   const { mutate: createDepartment, isPending } = useCreateDepartment();
 
@@ -37,9 +38,16 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !shortName || !collegeId) return toast.error('All fields are required');
+    setErrorMsg('');
     createDepartment({ name, shortName, collegeId }, {
       onSuccess: () => { toast.success('Department added successfully'); onClose(); },
-      onError: (err: any) => toast.error(err.message || 'Failed to add department'),
+      onError: (err: any) => {
+        if (err.message?.toLowerCase().includes('already exists') || err.message?.toLowerCase().includes('conflict') || err.message?.toLowerCase().includes('unique')) {
+          setErrorMsg('A department with this name or code already exists. Please use a different name or abbreviation.');
+        } else {
+          setErrorMsg(err.message || 'Failed to add department');
+        }
+      },
     });
   };
 
@@ -50,6 +58,12 @@ function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Add New Department</h2>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
+        {errorMsg && (
+          <div style={{ margin: '20px 20px 0', padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', color: 'var(--danger)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', lineHeight: 1.4 }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
         <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div style={formGroup}>

@@ -6,7 +6,7 @@ import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
 import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
-import { X, Plus, Loader2, BookOpen, Trash2 } from 'lucide-react';
+import { X, Plus, Loader2, BookOpen, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -31,6 +31,7 @@ function CreateProgrammeModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [durationYears, setDurationYears] = useState(3);
+  const [errorMsg, setErrorMsg] = useState('');
   
   const { mutate: createProgramme, isPending } = useCreateProgramme();
   const { data: colleges } = useColleges();
@@ -41,9 +42,16 @@ function CreateProgrammeModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !code || !departmentId) return toast.error('All fields are required');
+    setErrorMsg('');
     createProgramme({ name, code, departmentId, durationYears }, {
       onSuccess: () => { toast.success('Programme added successfully'); onClose(); },
-      onError: (err: any) => toast.error(err.message || 'Failed to add programme'),
+      onError: (err: any) => {
+        if (err.message?.toLowerCase().includes('already exists') || err.message?.toLowerCase().includes('conflict') || err.message?.toLowerCase().includes('unique')) {
+          setErrorMsg('A programme with this code already exists. Please use a different abbreviation.');
+        } else {
+          setErrorMsg(err.message || 'Failed to add programme');
+        }
+      },
     });
   };
 
@@ -54,6 +62,12 @@ function CreateProgrammeModal({ onClose }: { onClose: () => void }) {
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Add New Programme</h2>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
+        {errorMsg && (
+          <div style={{ margin: '20px 20px 0', padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', color: 'var(--danger)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', lineHeight: 1.4 }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
         <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div style={formGroup}>
