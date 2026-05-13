@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCreateAnnouncement } from '@/app/(admin)/dashboard/announcements/query';
 import { useCategories } from '@/app/(admin)/dashboard/announcements/query';
-import { RichTextEditor } from '@/components/admin/ui/RichTextEditor';
 import { toast } from 'sonner';
 
 export default function CreateAnnouncementPage() {
@@ -34,10 +33,10 @@ export default function CreateAnnouncementPage() {
       {
         title,
         content,
-        targetType: targetType as any,
+        type: 'GENERAL',
+        status: 'PUBLISHED',
         categoryId: categoryId || undefined,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
-        isActive: true,
+        audiences: [{ targetType }],
       },
       {
         onSuccess: () => {
@@ -73,7 +72,13 @@ export default function CreateAnnouncementPage() {
             
             <div style={styles.formGroup}>
               <label style={styles.label}>Content</label>
-              <RichTextEditor value={content} onChange={setContent} />
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                style={{ ...styles.input, minHeight: '220px', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 }}
+                required
+                placeholder="Announcement body..."
+              />
             </div>
           </div>
         </div>

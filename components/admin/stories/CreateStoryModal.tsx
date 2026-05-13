@@ -33,8 +33,7 @@ export function CreateStoryModal({ onClose }: { onClose: () => void }) {
 
       createStory(
         { 
-          mediaUrl: uploadRes.data.url, 
-          expiresAt: new Date(expiresAt).toISOString() 
+          mediaId: uploadRes.data?.mediaId || uploadRes.data?.id || uploadRes.data?.url,
         },
         {
           onSuccess: () => {

@@ -43,7 +43,7 @@ export default function GroupsPage() {
         return (
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
             <button 
-              onClick={() => updateGroup({ id: group.id, data: { isActive: !group.isActive }})}
+              onClick={() => updateGroup({ id: group.id, data: { isActive: !group.isActive } as any })}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}
               title={group.isActive ? 'Suspend' : 'Activate'}
             >
