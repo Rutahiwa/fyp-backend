@@ -1,0 +1,109 @@
+'use server';
+
+import { getAuthHeaders } from './auth';
+
+const BASE_URL = 'https://fyp-backend-pi-one.vercel.app/api';
+
+// COLLEGES
+export async function getColleges() {
+  const res = await fetch(`${BASE_URL}/colleges`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch colleges');
+  return json;
+}
+
+export async function createCollege(data: { name: string; shortName: string }) {
+  const res = await fetch(`${BASE_URL}/colleges`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to create college');
+  return json;
+}
+
+// PROGRAMMES
+export async function getProgrammes(collegeId?: string) {
+  const url = collegeId ? `${BASE_URL}/programmes?collegeId=${collegeId}` : `${BASE_URL}/programmes`;
+  const res = await fetch(url, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch programmes');
+  return json;
+}
+
+export async function createProgramme(data: { name: string; shortName: string; collegeId: string; durationYears: number }) {
+  const res = await fetch(`${BASE_URL}/programmes`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to create programme');
+  return json;
+}
+
+export async function updateProgramme(id: string, data: any) {
+  const res = await fetch(`${BASE_URL}/programmes/${id}`, {
+    method: 'PUT',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to update programme');
+  return json;
+}
+
+export async function deleteProgramme(id: string) {
+  const res = await fetch(`${BASE_URL}/programmes/${id}`, {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to delete programme');
+  return json;
+}
+
+// ACADEMIC YEARS
+export async function getAcademicYears() {
+  const res = await fetch(`${BASE_URL}/academic-years`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch academic years');
+  return json;
+}
+
+export async function createAcademicYear(data: { year: string; startDate: string; endDate: string; isCurrent?: boolean }) {
+  const res = await fetch(`${BASE_URL}/academic-years`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to create academic year');
+  return json;
+}
+
+export async function setCurrentAcademicYear(id: string) {
+  const res = await fetch(`${BASE_URL}/academic-years/${id}/set-current`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to set current academic year');
+  return json;
+}

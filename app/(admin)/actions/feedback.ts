@@ -1,0 +1,36 @@
+'use server';
+
+import { getAuthHeaders } from './auth';
+
+const BASE_URL = 'https://fyp-backend-pi-one.vercel.app/api';
+
+export interface GetFeedbackParams {
+  page?: number;
+  pageSize?: number;
+  status?: 'PENDING' | 'REVIEWED' | 'RESOLVED';
+}
+
+export async function getAdminFeedback({ page = 1, pageSize = 20, status }: GetFeedbackParams = {}) {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (status) params.set('status', status);
+
+  const res = await fetch(`${BASE_URL}/admin/feedback?${params}`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch feedback');
+  return json;
+}
+
+export async function updateFeedbackStatus(id: string, status: 'PENDING' | 'REVIEWED' | 'RESOLVED', adminNotes?: string) {
+  const res = await fetch(`${BASE_URL}/admin/feedback/${id}`, {
+    method: 'PUT',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ status, adminNotes }),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to update feedback status');
+  return json;
+}
