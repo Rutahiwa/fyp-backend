@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { departments } from "@/lib/db/schema";
+import { colleges } from "@/lib/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
-import { updateDepartmentSchema } from "@/lib/validators/departments";
+import { updateCollegeSchema } from "@/lib/validators/colleges";
 import { logAction } from "@/lib/audit";
 
 type Params = { params: Promise<{ id: string }> };
@@ -12,16 +12,16 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const [dept] = await db
+    const [college] = await db
       .select()
-      .from(departments)
-      .where(eq(departments.id, id))
+      .from(colleges)
+      .where(eq(colleges.id, id))
       .limit(1);
 
-    if (!dept) return errorResponse("Department not found", 404);
-    return successResponse(dept);
+    if (!college) return errorResponse("College not found", 404);
+    return successResponse(college);
   } catch (error) {
-    console.error("GET /api/departments/[id] error:", error);
+    console.error("GET /api/colleges/[id] error:", error);
     return errorResponse("Internal server error", 500);
   }
 }
@@ -37,46 +37,45 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const { id } = await params;
     const body = await req.json();
-    const validation = updateDepartmentSchema.safeParse(body);
+    const validation = updateCollegeSchema.safeParse(body);
     if (!validation.success)
       return errorResponse("Validation failed", 400, validation.error.format());
 
-    if (validation.data.shortName && validation.data.collegeId) {
+    if (validation.data.shortName) {
       const existing = await db
-        .select({ id: departments.id })
-        .from(departments)
+        .select({ id: colleges.id })
+        .from(colleges)
         .where(
           and(
-            eq(departments.collegeId, validation.data.collegeId),
-            eq(departments.shortName, validation.data.shortName),
-            ne(departments.id, id)
+            eq(colleges.shortName, validation.data.shortName),
+            ne(colleges.id, id)
           )
         )
         .limit(1);
       
       if (existing.length > 0) {
-        return errorResponse("A department with this abbreviation already exists in this college", 409);
+        return errorResponse("A college with this abbreviation already exists", 409);
       }
     }
 
     const [updated] = await db
-      .update(departments)
+      .update(colleges)
       .set({ ...validation.data, updatedAt: new Date() })
-      .where(eq(departments.id, id))
+      .where(eq(colleges.id, id))
       .returning();
 
-    if (!updated) return errorResponse("Department not found", 404);
+    if (!updated) return errorResponse("College not found", 404);
 
     await logAction({
       userId: auth.user.userId,
-      action: "UPDATE_DEPARTMENT",
-      entity: "DEPARTMENT",
+      action: "UPDATE_COLLEGE",
+      entity: "COLLEGE",
       entityId: id,
     });
 
-    return successResponse(updated, "Department updated successfully");
+    return successResponse(updated, "College updated successfully");
   } catch (error) {
-    console.error("PATCH /api/departments/[id] error:", error);
+    console.error("PATCH /api/colleges/[id] error:", error);
     return errorResponse("Internal server error", 500);
   }
 }
@@ -92,22 +91,22 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     const { id } = await params;
     const [deleted] = await db
-      .delete(departments)
-      .where(eq(departments.id, id))
+      .delete(colleges)
+      .where(eq(colleges.id, id))
       .returning();
 
-    if (!deleted) return errorResponse("Department not found", 404);
+    if (!deleted) return errorResponse("College not found", 404);
 
     await logAction({
       userId: auth.user.userId,
-      action: "DELETE_DEPARTMENT",
-      entity: "DEPARTMENT",
+      action: "DELETE_COLLEGE",
+      entity: "COLLEGE",
       entityId: id,
     });
 
-    return successResponse(null, "Department deleted successfully");
+    return successResponse(null, "College deleted successfully");
   } catch (error) {
-    console.error("DELETE /api/departments/[id] error:", error);
+    console.error("DELETE /api/colleges/[id] error:", error);
     return errorResponse("Internal server error", 500);
   }
 }

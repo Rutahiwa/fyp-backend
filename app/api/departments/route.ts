@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { departments, colleges } from "@/lib/db/schema";
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, sql, and } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createDepartmentSchema } from "@/lib/validators/departments";
@@ -59,6 +59,21 @@ export async function POST(req: NextRequest) {
       .limit(1);
     if (collegeExists.length === 0) {
       return errorResponse("College not found", 404);
+    }
+
+    const deptExists = await db
+      .select({ id: departments.id })
+      .from(departments)
+      .where(
+        and(
+          eq(departments.collegeId, validation.data.collegeId),
+          eq(departments.shortName, validation.data.shortName)
+        )
+      )
+      .limit(1);
+      
+    if (deptExists.length > 0) {
+      return errorResponse("A department with this abbreviation already exists in this college", 409);
     }
 
     const [created] = await db.insert(departments).values(validation.data).returning();

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useColleges, useDepartments, useProgrammes, useCreateProgramme, useDeleteProgramme } from '../query';
+import { useColleges, useDepartments, useProgrammes, useCreateProgramme, useUpdateProgramme, useDeleteProgramme } from '../query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
 import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
-import { X, Plus, Loader2, BookOpen, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Plus, Loader2, BookOpen, Trash2, AlertTriangle, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -134,9 +134,120 @@ function CreateProgrammeModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Edit Programme Modal ─────────────────────────────────────────────────────
+function EditProgrammeModal({ programme, onClose }: { programme: any; onClose: () => void }) {
+  const [collegeId, setCollegeId] = useState(programme.collegeId);
+  const [departmentId, setDepartmentId] = useState(programme.departmentId);
+  const [name, setName] = useState(programme.name);
+  const [code, setCode] = useState(programme.code);
+  const [durationYears, setDurationYears] = useState(programme.durationYears);
+  const [errorMsg, setErrorMsg] = useState('');
+  
+  const { mutate: updateProgramme, isPending } = useUpdateProgramme();
+  const { data: colleges } = useColleges();
+  const { data: departmentsData, isLoading: isLoadingDepts } = useDepartments(collegeId || undefined);
+
+  const departments: any[] = departmentsData?.data || [];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !code || !departmentId) return toast.error('All fields are required');
+    setErrorMsg('');
+    updateProgramme({ id: programme.id, data: { name, code, departmentId, durationYears } }, {
+      onSuccess: () => { toast.success('Programme updated successfully'); onClose(); },
+      onError: (err: any) => {
+        if (err.message?.toLowerCase().includes('already exists') || err.message?.toLowerCase().includes('conflict') || err.message?.toLowerCase().includes('unique')) {
+          setErrorMsg('A programme with this code already exists. Please use a different abbreviation.');
+        } else {
+          setErrorMsg(err.message || 'Failed to update programme');
+        }
+      },
+    });
+  };
+
+  return (
+    <div style={overlayStyle}>
+      <div style={modalStyle}>
+        <div style={modalHeader}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Edit Programme</h2>
+          <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
+        </div>
+        {errorMsg && (
+          <div style={{ margin: '20px 20px 0', padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', color: 'var(--danger)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', lineHeight: 1.4 }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+        <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          <div style={formGroup}>
+            <label style={labelStyle}>College</label>
+            <select 
+              style={selectStyle} 
+              value={collegeId} 
+              onChange={e => {
+                setCollegeId(e.target.value);
+                setDepartmentId(''); // Reset department when college changes
+              }} 
+              required
+            >
+              <option value="">— Select College —</option>
+              {colleges?.data?.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.shortName})</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={formGroup}>
+            <label style={labelStyle}>Department</label>
+            <select 
+              style={selectStyle} 
+              value={departmentId} 
+              onChange={e => setDepartmentId(e.target.value)} 
+              required
+              disabled={!collegeId || isLoadingDepts}
+            >
+              <option value="">{!collegeId ? 'Select college first' : '— Select Department —'}</option>
+              {departments.map((d: any) => (
+                <option key={d.id} value={d.id}>{d.name} ({d.shortName})</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={formGroup}>
+            <label style={labelStyle}>Programme Name</label>
+            <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} required />
+          </div>
+          
+          <div style={formGroup}>
+            <label style={labelStyle}>Abbreviation</label>
+            <input style={inputStyle} value={code} onChange={e => setCode(e.target.value)} required />
+          </div>
+          
+          <div style={formGroup}>
+            <label style={labelStyle}>Duration in Years</label>
+            <select style={selectStyle} value={durationYears} onChange={e => setDurationYears(Number(e.target.value))}>
+              {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} Year{n > 1 ? 's' : ''}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+            <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+            <button type="submit" disabled={isPending} style={submitBtnStyle}>
+              {isPending && <Loader2 size={14} style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }} />}
+              {isPending ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Programmes Page ───────────────────────────────────────────────────────────
 export default function ProgrammesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const { data, isLoading } = useProgrammes();
   const { mutate: deleteProgramme, isPending: isDeleting } = useDeleteProgramme();
@@ -152,7 +263,14 @@ export default function ProgrammesPage() {
     {
       id: 'actions',
       cell: ({ row }) => (
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          <button
+            onClick={() => setEditTarget(row.original)}
+            style={{ backgroundColor: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
+            title="Edit Programme"
+          >
+            <Edit2 size={16} />
+          </button>
           <button
             onClick={() => setDeleteTarget(row.original)}
             style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
@@ -183,6 +301,7 @@ export default function ProgrammesPage() {
       )}
 
       {isModalOpen && <CreateProgrammeModal onClose={() => setIsModalOpen(false)} />}
+      {editTarget && <EditProgrammeModal programme={editTarget} onClose={() => setEditTarget(null)} />}
 
       {deleteTarget && (
         <ConfirmModal
