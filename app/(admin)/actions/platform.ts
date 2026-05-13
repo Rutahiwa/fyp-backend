@@ -38,6 +38,42 @@ export async function deleteCollege(id: string) {
   return json;
 }
 
+// DEPARTMENTS
+export async function getDepartments(collegeId?: string) {
+  const url = collegeId
+    ? `${BASE_URL}/departments?collegeId=${collegeId}`
+    : `${BASE_URL}/departments`;
+  const res = await fetch(url, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to fetch departments');
+  return json;
+}
+
+export async function createDepartment(data: { name: string; shortName: string; collegeId: string }) {
+  const res = await fetch(`${BASE_URL}/departments`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to create department');
+  return json;
+}
+
+export async function deleteDepartment(id: string) {
+  const res = await fetch(`${BASE_URL}/departments/${id}`, {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to delete department');
+  return json;
+}
 // PROGRAMMES
 export async function getProgrammes(collegeId?: string) {
   const url = collegeId ? `${BASE_URL}/programmes?collegeId=${collegeId}` : `${BASE_URL}/programmes`;

@@ -5,6 +5,9 @@ import {
   getColleges, 
   createCollege,
   deleteCollege,
+  getDepartments,
+  createDepartment,
+  deleteDepartment,
   getProgrammes,
   createProgramme,
   updateProgramme,
@@ -38,6 +41,29 @@ export function useDeleteCollege() {
   });
 }
 
+// DEPARTMENTS
+export function useDepartments(collegeId?: string) {
+  return useQuery({
+    queryKey: ['departments', collegeId],
+    queryFn: () => getDepartments(collegeId),
+  });
+}
+
+export function useCreateDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; shortName: string; collegeId: string }) => createDepartment(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['departments'] }),
+  });
+}
+
+export function useDeleteDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDepartment(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['departments'] }),
+  });
+}
 // PROGRAMMES
 export function useProgrammes(collegeId?: string) {
   return useQuery({
