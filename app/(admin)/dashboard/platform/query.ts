@@ -75,7 +75,7 @@ export function useProgrammes(collegeId?: string) {
 export function useCreateProgramme() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; shortName: string; collegeId: string; durationYears: number }) => createProgramme(data),
+    mutationFn: (data: { name: string; code: string; departmentId: string; durationYears: number }) => createProgramme(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['programmes'] }),
   });
 }

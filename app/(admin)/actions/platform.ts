@@ -86,7 +86,7 @@ export async function getProgrammes(collegeId?: string) {
   return json;
 }
 
-export async function createProgramme(data: { name: string; shortName: string; collegeId: string; durationYears: number }) {
+export async function createProgramme(data: { name: string; code: string; departmentId: string; durationYears: number }) {
   const res = await fetch(`${BASE_URL}/programmes`, {
     method: 'POST',
     headers: await getAuthHeaders(),
