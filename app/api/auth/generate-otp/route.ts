@@ -56,7 +56,10 @@ export async function POST(req: NextRequest) {
     });
 
     // Send email
-    await sendOtpEmail(email, otpCode);
+    const emailResult = await sendOtpEmail(email, otpCode);
+    if (!emailResult.success) {
+      return errorResponse("Failed to send OTP email. Please try again.", 500);
+    }
 
     await logAction({
       userId: user.id,
