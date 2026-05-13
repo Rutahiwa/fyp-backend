@@ -1,13 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { useColleges, useCreateCollege } from '../query';
+import { useColleges, useCreateCollege, useDeleteCollege } from '../query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
-import { X, Plus, Loader2 } from 'lucide-react';
+import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
+import { X, Plus, Loader2, Building2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// ── Stat Card ─────────────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: any; color: string }) {
+  return (
+    <div style={{ backgroundColor: 'var(--surface)', padding: '20px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', borderLeft: `3px solid ${color}`, display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{value}</div>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Create College Modal ──────────────────────────────────────────────────────
 function CreateCollegeModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
@@ -41,7 +58,7 @@ function CreateCollegeModal({ onClose }: { onClose: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
             <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
             <button type="submit" disabled={isPending} style={submitBtnStyle}>
-              {isPending && <Loader2 size={14} style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }} />}
+              {isPending && <Loader2 size={14} style={{ marginRight: '6px' }} />}
               {isPending ? 'Adding...' : 'Add College'}
             </button>
           </div>
@@ -51,22 +68,54 @@ function CreateCollegeModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Colleges Page ─────────────────────────────────────────────────────────────
 export default function CollegesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const { data, isLoading } = useColleges();
+  const { mutate: deleteCollege, isPending: isDeleting } = useDeleteCollege();
+
+  const colleges: any[] = data?.data || [];
+  const totalProgrammes = colleges.reduce((sum: number, c: any) => sum + (c.programmesCount ?? c.programmes?.length ?? 0), 0);
 
   const columns: ColumnDef<any>[] = [
-    { accessorKey: 'name', header: 'College Name', cell: ({ row }) => <span style={{ fontWeight: 500 }}>{row.original.name}</span> },
+    {
+      accessorKey: 'name',
+      header: 'College Name',
+      cell: ({ row }) => <span style={{ fontWeight: 500 }}>{row.original.name}</span>,
+    },
     { accessorKey: 'shortName', header: 'Abbreviation' },
     {
       accessorKey: 'createdAt',
       header: 'Added On',
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString()
-    }
+      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setDeleteTarget(row.original)}
+            style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
+            title="Delete College"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
     <div>
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        <StatCard icon={<Building2 size={20} color="var(--primary)" />} label="Total Colleges" value={isLoading ? '...' : colleges.length} color="var(--primary)" />
+        <StatCard icon={<Building2 size={20} color="#3fb950" />} label="Total Programmes" value={isLoading ? '...' : totalProgrammes} color="#3fb950" />
+        <StatCard icon={<Building2 size={20} color="#d29922" />} label="Active Since" value={isLoading ? '...' : (colleges[0] ? new Date(colleges[0].createdAt).getFullYear() : '—')} color="#d29922" />
+      </div>
+
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Colleges</h1>
@@ -77,11 +126,26 @@ export default function CollegesPage() {
         </button>
       </div>
 
-      {isLoading ? <DataTableSkeleton columns={3} rows={6} /> : (
-        <DataTable columns={columns} data={data?.data || []} />
+      {isLoading ? <DataTableSkeleton columns={4} rows={6} /> : (
+        <DataTable columns={columns} data={colleges} />
       )}
 
       {isModalOpen && <CreateCollegeModal onClose={() => setIsModalOpen(false)} />}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete College"
+          message={`Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.`}
+          isPending={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteCollege(deleteTarget.id, {
+              onSuccess: () => { toast.success('College deleted'); setDeleteTarget(null); },
+              onError: (err: any) => toast.error(err.message || 'Failed to delete college'),
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

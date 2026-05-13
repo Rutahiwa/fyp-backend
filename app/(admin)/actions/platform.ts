@@ -27,6 +27,17 @@ export async function createCollege(data: { name: string; shortName: string }) {
   return json;
 }
 
+export async function deleteCollege(id: string) {
+  const res = await fetch(`${BASE_URL}/colleges/${id}`, {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to delete college');
+  return json;
+}
+
 // PROGRAMMES
 export async function getProgrammes(collegeId?: string) {
   const url = collegeId ? `${BASE_URL}/programmes?collegeId=${collegeId}` : `${BASE_URL}/programmes`;

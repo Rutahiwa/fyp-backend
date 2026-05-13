@@ -4,17 +4,18 @@ import { useState } from 'react';
 import { adminLogin } from '@/app/(admin)/actions/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
       const res = await adminLogin(email, password);
       if (res.success) {
@@ -24,7 +25,7 @@ export default function LoginPage() {
       } else {
         toast.error(res.message);
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -38,12 +39,12 @@ export default function LoginPage() {
           <h1 style={styles.title}>UDSM Connect Admin</h1>
           <p style={styles.subtitle}>Sign in to manage the platform</p>
         </div>
-        
+
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Email Address</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
@@ -51,19 +52,30 @@ export default function LoginPage() {
               placeholder="admin@udsm.ac.tz"
             />
           </div>
-          
+
           <div style={styles.formGroup}>
             <label style={styles.label}>Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
-              required
-              placeholder="••••••••"
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ ...styles.input, paddingRight: '44px' }}
+                required
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                style={styles.eyeBtn}
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
-          
+
           <button type="submit" disabled={isLoading} style={styles.button}>
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
@@ -91,36 +103,12 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '420px',
     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
   },
-  header: {
-    textAlign: 'center',
-    marginBottom: '32px',
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: 600,
-    margin: '0 0 8px 0',
-    color: 'var(--text)',
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: 'var(--text-muted)',
-    margin: 0,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  label: {
-    fontSize: '14px',
-    fontWeight: 500,
-    color: 'var(--text)',
-  },
+  header: { textAlign: 'center', marginBottom: '32px' },
+  title: { fontSize: '24px', fontWeight: 600, margin: '0 0 8px 0', color: 'var(--text)' },
+  subtitle: { fontSize: '14px', color: 'var(--text-muted)', margin: 0 },
+  form: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  formGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  label: { fontSize: '14px', fontWeight: 500, color: 'var(--text)' },
   input: {
     padding: '12px',
     backgroundColor: 'var(--bg)',
@@ -130,6 +118,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     outline: 'none',
     transition: 'border-color 0.2s',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0',
   },
   button: {
     padding: '12px',
@@ -141,5 +144,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     marginTop: '8px',
     transition: 'background-color 0.2s',
-  }
+    cursor: 'pointer',
+  },
 };

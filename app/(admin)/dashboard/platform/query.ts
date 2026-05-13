@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getColleges, 
   createCollege,
+  deleteCollege,
   getProgrammes,
   createProgramme,
   updateProgramme,
@@ -25,6 +26,14 @@ export function useCreateCollege() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { name: string; shortName: string }) => createCollege(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['colleges'] }),
+  });
+}
+
+export function useDeleteCollege() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCollege(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['colleges'] }),
   });
 }

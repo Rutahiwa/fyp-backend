@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useUsers, useUpdateUser, useCreateUser } from './query';
+import { useUsers, useUpdateUser, useCreateUser, useDeleteUser } from './query';
 import { useRoles } from '@/app/(admin)/dashboard/roles/query';
 import { useColleges, useProgrammes } from '@/app/(admin)/dashboard/platform/query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { usersColumns } from '@/components/admin/users/UsersColumns';
+import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
 import { X, Plus, Loader2, Users, UserCheck, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -129,9 +130,11 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const { data, isLoading, isError } = useUsers({ page, pageSize: 20, search });
   const { mutate: updateUser } = useUpdateUser();
+  const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
   const total = data?.meta?.total || 0;
   const users: any[] = data?.data || [];
@@ -150,24 +153,18 @@ export default function UsersPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Users</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>Manage platform users, roles, and access.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            style={{ padding: '10px 16px', backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', width: '240px', outline: 'none' }}
-          />
-          <button onClick={() => setIsAddModalOpen(true)} style={addBtnStyle}>
-            <Plus size={16} style={{ marginRight: '6px' }} /> Add User
-          </button>
-        </div>
+      {/* Search + Add User */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center', marginBottom: '20px' }}>
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          style={{ padding: '10px 16px', backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', width: '240px', outline: 'none' }}
+        />
+        <button onClick={() => setIsAddModalOpen(true)} style={addBtnStyle}>
+          <Plus size={16} style={{ marginRight: '6px' }} /> Add User
+        </button>
       </div>
 
       {/* Stat Cards */}
@@ -177,6 +174,12 @@ export default function UsersPage() {
         <StatCard icon={<UserX size={20} color="#ff7b72" />} label="Inactive Users" value={isLoading ? '...' : inactiveCount} color="#ff7b72" />
       </div>
 
+      {/* Title — below stat cards */}
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '24px', margin: '0 0 4px 0', color: 'var(--text)' }}>Users</h1>
+        <p style={{ margin: 0, color: 'var(--text-muted)' }}>Manage platform users, roles, and access.</p>
+      </div>
+
       {/* Table */}
       {isLoading ? (
         <DataTableSkeleton columns={6} rows={10} />
@@ -184,13 +187,29 @@ export default function UsersPage() {
         <div style={{ padding: '24px', textAlign: 'center', color: 'var(--danger)' }}>Failed to load users.</div>
       ) : (
         <DataTable
-          columns={usersColumns({ onToggleStatus: handleToggleStatus })}
+          columns={usersColumns({ onToggleStatus: handleToggleStatus, onDelete: setDeleteTarget })}
           data={users}
           pagination={{ page, total, pageSize: 20, onPageChange: setPage }}
         />
       )}
 
       {isAddModalOpen && <AddUserModal onClose={() => setIsAddModalOpen(false)} />}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete User"
+          message={`Are you sure you want to delete ${deleteTarget.fullName}? This action cannot be undone.`}
+          confirmLabel="Delete"
+          isPending={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteUser(deleteTarget.id, {
+              onSuccess: () => { toast.success('User deleted'); setDeleteTarget(null); },
+              onError: (err: any) => toast.error(err.message || 'Failed to delete user'),
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

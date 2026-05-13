@@ -5,7 +5,8 @@ import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, usePermissions }
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
-import { X, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
+import { X, Plus, Loader2, Pencil, Trash2, ShieldAlert, Key } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ─── Role Modal (create + edit) ────────────────────────────────────────────────
@@ -125,9 +126,13 @@ function RoleModal({ onClose, editingRole }: { onClose: () => void; editingRole?
 // ─── Roles Page ─────────────────────────────────────────────────────────────────
 export default function RolesPage() {
   const { data, isLoading } = useRoles();
-  const { mutate: deleteRole } = useDeleteRole();
+  const { mutate: deleteRole, isPending: isDeleting } = useDeleteRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+
+  const roles: any[] = data?.data || [];
+  const totalPermissions = roles.reduce((sum: number, r: any) => sum + (r.permissions?.length ?? 0), 0);
 
   const handleEdit = (role: any) => {
     setEditingRole(role);
@@ -139,13 +144,7 @@ export default function RolesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (role: any) => {
-    if (!confirm(`Delete the "${role.name}" role? This cannot be undone.`)) return;
-    deleteRole(role.id, {
-      onSuccess: () => toast.success('Role deleted'),
-      onError: (err: any) => toast.error(err.message || 'Delete failed'),
-    });
-  };
+  const handleDelete = (role: any) => setDeleteTarget(role);
 
   const columns: ColumnDef<any>[] = [
     {
@@ -191,9 +190,31 @@ export default function RolesPage() {
 
   return (
     <div>
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+        <div style={statCard}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--primary)20', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px' }}>
+            <ShieldAlert size={20} color="var(--primary)" />
+          </div>
+          <div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{isLoading ? '...' : roles.length}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Total Roles</div>
+          </div>
+        </div>
+        <div style={statCard}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#d2992220', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px' }}>
+            <Key size={20} color="#d29922" />
+          </div>
+          <div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{isLoading ? '...' : totalPermissions}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Total Permissions</div>
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Roles & Permissions</h1>
+          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Roles &amp; Permissions</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>Define RBAC roles and their system access.</p>
         </div>
         <button onClick={handleCreate} style={createBtnStyle}>
@@ -202,17 +223,33 @@ export default function RolesPage() {
       </div>
 
       {isLoading ? <DataTableSkeleton columns={5} rows={5} /> : (
-        <DataTable columns={columns} data={data?.data || []} />
+        <DataTable columns={columns} data={roles} />
       )}
 
       {isModalOpen && (
         <RoleModal onClose={() => { setIsModalOpen(false); setEditingRole(null); }} editingRole={editingRole} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Role"
+          message={`Are you sure you want to delete the "${deleteTarget.name}" role? This action cannot be undone.`}
+          isPending={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteRole(deleteTarget.id, {
+              onSuccess: () => { toast.success('Role deleted'); setDeleteTarget(null); },
+              onError: (err: any) => toast.error(err.message || 'Delete failed'),
+            });
+          }}
+        />
       )}
     </div>
   );
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────────
+const statCard: React.CSSProperties = { backgroundColor: 'var(--surface)', padding: '20px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center' };
 const overlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 };
 const modalStyle: React.CSSProperties = { backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.45)' };
 const modalHeaderStyle: React.CSSProperties = { padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
@@ -224,3 +261,4 @@ const cancelBtnStyle: React.CSSProperties = { padding: '10px 16px', background: 
 const submitBtnStyle: React.CSSProperties = { padding: '10px 16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' };
 const createBtnStyle: React.CSSProperties = { padding: '10px 16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' };
 const actionBtnStyle: React.CSSProperties = { backgroundColor: 'transparent', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
