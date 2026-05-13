@@ -4,6 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getColleges, 
   createCollege,
+  deleteCollege,
+  getDepartments,
+  createDepartment,
+  deleteDepartment,
   getProgrammes,
   createProgramme,
   updateProgramme,
@@ -26,6 +30,38 @@ export function useCreateCollege() {
   return useMutation({
     mutationFn: (data: { name: string; shortName: string }) => createCollege(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['colleges'] }),
+  });
+}
+
+export function useDeleteCollege() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteCollege(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['colleges'] }),
+  });
+}
+
+// DEPARTMENTS
+export function useDepartments(collegeId?: string) {
+  return useQuery({
+    queryKey: ['departments', collegeId],
+    queryFn: () => getDepartments(collegeId),
+  });
+}
+
+export function useCreateDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; shortName: string; collegeId: string }) => createDepartment(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['departments'] }),
+  });
+}
+
+export function useDeleteDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDepartment(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['departments'] }),
   });
 }
 
