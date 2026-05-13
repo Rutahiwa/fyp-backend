@@ -5,7 +5,8 @@ import {
   getUsers, 
   getUser, 
   updateUser, 
-  deleteUser, 
+  deleteUser,
+  createUser,
   GetUsersParams 
 } from '@/app/(admin)/actions/users';
 
@@ -39,6 +40,16 @@ export function useDeleteUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteUser(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => createUser(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
     },

@@ -74,3 +74,26 @@ export async function deleteUser(id: string) {
   if (!res.ok) throw new Error(json.message || 'Failed to delete user');
   return json;
 }
+
+export interface CreateUserData {
+  fullName: string;
+  email: string;
+  password: string;
+  roleId?: string;
+  collegeId?: string;
+  programmeId?: string;
+  yearOfStudy?: number;
+  registrationNumber?: string;
+}
+
+export async function createUser(data: CreateUserData) {
+  const res = await fetch(`${BASE_URL}/users`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'Failed to create user');
+  return json;
+}
