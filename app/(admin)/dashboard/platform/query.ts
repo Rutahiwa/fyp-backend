@@ -4,9 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getColleges, 
   createCollege,
+  updateCollege,
   deleteCollege,
   getDepartments,
   createDepartment,
+  updateDepartment,
   deleteDepartment,
   getProgrammes,
   createProgramme,
@@ -28,7 +30,23 @@ export function useColleges() {
 export function useCreateCollege() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; shortName: string }) => createCollege(data),
+    mutationFn: async (data: { name: string; shortName: string }) => {
+      const res = await createCollege(data);
+      if (res.error) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['colleges'] }),
+  });
+}
+
+export function useUpdateCollege() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateCollege(id, data);
+      if (res.error) throw new Error(res.error);
+      return res;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['colleges'] }),
   });
 }
@@ -52,7 +70,23 @@ export function useDepartments(collegeId?: string) {
 export function useCreateDepartment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; shortName: string; collegeId: string }) => createDepartment(data),
+    mutationFn: async (data: { name: string; shortName: string; collegeId: string }) => {
+      const res = await createDepartment(data);
+      if (res.error) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['departments'] }),
+  });
+}
+
+export function useUpdateDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateDepartment(id, data);
+      if (res.error) throw new Error(res.error);
+      return res;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['departments'] }),
   });
 }
@@ -76,7 +110,11 @@ export function useProgrammes(collegeId?: string) {
 export function useCreateProgramme() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; code: string; departmentId: string; durationYears: number }) => createProgramme(data),
+    mutationFn: async (data: { name: string; code: string; departmentId: string; durationYears: number }) => {
+      const res = await createProgramme(data);
+      if (res.error) throw new Error(res.error);
+      return res;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['programmes'] }),
   });
 }
@@ -84,7 +122,11 @@ export function useCreateProgramme() {
 export function useUpdateProgramme() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateProgramme(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await updateProgramme(id, data);
+      if (res.error) throw new Error(res.error);
+      return res;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['programmes'] }),
   });
 }

@@ -23,7 +23,19 @@ export async function createCollege(data: { name: string; shortName: string }) {
     cache: 'no-store',
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'Failed to create college');
+  if (!res.ok) return { error: json.message || 'Failed to create college' };
+  return json;
+}
+
+export async function updateCollege(id: string, data: any) {
+  const res = await fetch(`${BASE_URL}/colleges/${id}`, {
+    method: 'PATCH',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) return { error: json.message || 'Failed to update college' };
   return json;
 }
 
@@ -60,7 +72,19 @@ export async function createDepartment(data: { name: string; shortName: string; 
     cache: 'no-store',
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'Failed to create department');
+  if (!res.ok) return { error: json.message || 'Failed to create department' };
+  return json;
+}
+
+export async function updateDepartment(id: string, data: any) {
+  const res = await fetch(`${BASE_URL}/departments/${id}`, {
+    method: 'PATCH',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  });
+  const json = await res.json();
+  if (!res.ok) return { error: json.message || 'Failed to update department' };
   return json;
 }
 
@@ -95,7 +119,7 @@ export async function createProgramme(data: { name: string; code: string; depart
     cache: 'no-store',
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'Failed to create programme');
+  if (!res.ok) return { error: json.message || 'Failed to create programme' };
   return json;
 }
 
@@ -107,7 +131,7 @@ export async function updateProgramme(id: string, data: any) {
     cache: 'no-store',
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(json.message || 'Failed to update programme');
+  if (!res.ok) return { error: json.message || 'Failed to update programme' };
   return json;
 }
 
