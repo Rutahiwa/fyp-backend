@@ -1,21 +1,22 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "fallback_key");
-const FROM_EMAIL = "noreply@udsm.ac.tz"; // Update to verified domain
+const FROM_EMAIL = "noreply@udsminfo.com";
 
 export async function sendEmail({ to, subject, html }: { to: string, subject: string, html: string }) {
-  try {
-    const data = await resend.emails.send({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html
-    });
-    return { success: true, data };
-  } catch (error: any) {
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html
+  });
+
+  if (error) {
     console.error("Email send error:", error);
     return { success: false, error: error.message };
   }
+
+  return { success: true, data };
 }
 
 export async function sendOtpEmail(to: string, otpCode: string) {
