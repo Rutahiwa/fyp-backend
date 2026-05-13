@@ -5,20 +5,28 @@ import { useColleges, useCreateCollege } from '../query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
-import { X, Plus, Loader2 } from 'lucide-react';
+import { X, Plus, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 function CreateCollegeModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const { mutate: createCollege, isPending } = useCreateCollege();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !shortName) return toast.error('Both fields are required');
+    setErrorMsg('');
     createCollege({ name, shortName }, {
       onSuccess: () => { toast.success('College added successfully'); onClose(); },
-      onError: (err: any) => toast.error(err.message || 'Failed to add college'),
+      onError: (err: any) => {
+        if (err.message?.toLowerCase().includes('already exists') || err.message?.toLowerCase().includes('conflict') || err.message?.toLowerCase().includes('unique')) {
+          setErrorMsg('A college with this name or code already exists. Please use a different name or abbreviation.');
+        } else {
+          setErrorMsg(err.message || 'Failed to add college');
+        }
+      },
     });
   };
 
@@ -29,6 +37,12 @@ function CreateCollegeModal({ onClose }: { onClose: () => void }) {
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Add New College</h2>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
+        {errorMsg && (
+          <div style={{ margin: '20px 20px 0', padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', color: 'var(--danger)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', lineHeight: 1.4 }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
         <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={formGroup}>
             <label style={labelStyle}>Full College Name</label>
