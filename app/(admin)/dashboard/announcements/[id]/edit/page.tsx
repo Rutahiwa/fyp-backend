@@ -20,7 +20,7 @@ export default function EditAnnouncementPage({ params }: { params: Promise<{ id:
   const [targetType, setTargetType] = useState('ALL');
   const [categoryId, setCategoryId] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('PUBLISHED');
 
   // Pre-fill form once data loads
   useEffect(() => {
@@ -28,9 +28,9 @@ export default function EditAnnouncementPage({ params }: { params: Promise<{ id:
     if (!ann) return;
     setTitle(ann.title || '');
     setContent(ann.content || '');
-    setTargetType(ann.targetType || 'ALL');
+    setTargetType(ann.audiences?.[0]?.targetType || ann.targetType || 'ALL');
     setCategoryId(ann.categoryId || '');
-    setIsActive(ann.isActive ?? true);
+    setStatus(ann.status || 'PUBLISHED');
     if (ann.expiresAt) setExpiresAt(new Date(ann.expiresAt).toISOString().slice(0, 16));
   }, [data]);
 
@@ -44,10 +44,9 @@ export default function EditAnnouncementPage({ params }: { params: Promise<{ id:
         data: {
           title,
           content,
-          targetType: targetType as any,
+          status,
           categoryId: categoryId || undefined,
-          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
-          isActive,
+          audiences: [{ targetType }],
         },
       },
       {
@@ -104,9 +103,9 @@ export default function EditAnnouncementPage({ params }: { params: Promise<{ id:
 
             <div style={fGroup}>
               <label style={lStyle}>Status</label>
-              <select style={sStyle} value={isActive ? 'active' : 'inactive'} onChange={e => setIsActive(e.target.value === 'active')}>
-                <option value="active">Published (Active)</option>
-                <option value="inactive">Unpublished (Inactive)</option>
+              <select style={sStyle} value={status} onChange={e => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')}>
+                <option value="PUBLISHED">Published (Active)</option>
+                <option value="DRAFT">Draft (Inactive)</option>
               </select>
             </div>
 
