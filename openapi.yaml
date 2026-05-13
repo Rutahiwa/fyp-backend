@@ -6,6 +6,8 @@ info:
 servers:
   - url: http://localhost:3000/api
     description: Local development server
+  - url: https://fyp-backend-pi-one.vercel.app/api
+    description: Production development server
 tags:
   - name: Authentication
     description: Registration, login, JWT, password reset, and email change
