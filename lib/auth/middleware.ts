@@ -73,7 +73,7 @@ export async function authenticateRequest(request: NextRequest): Promise<AuthRes
       return { error: "User account is inactive", status: 403 };
     }
 
-    return { user: { ...decoded, isActive: user.isActive } };
+    return { user: { ...decoded, roleId: user.roleId, isActive: user.isActive } };
   } catch (error) {
     return { error: "Authentication failed", status: 500 };
   }
