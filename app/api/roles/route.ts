@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { roles, rolePermissions } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { roles, rolePermissions, permissions, users } from "@/lib/db/schema";
+import { eq, desc, sql } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 import { createRoleSchema } from "@/lib/validators/roles";
@@ -18,7 +18,33 @@ export async function GET(req: NextRequest) {
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const rolesList = await db.select().from(roles).orderBy(desc(roles.createdAt));
-    return successResponse(rolesList);
+
+    // Fetch all role permissions
+    const perms = await db.select({
+      roleId: rolePermissions.roleId,
+      permissionId: rolePermissions.permissionId,
+      name: permissions.name,
+    })
+    .from(rolePermissions)
+    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id));
+
+    // Fetch user counts per role
+    const userCounts = await db.select({
+      roleId: users.roleId,
+      count: sql<number>`count(*)`
+    }).from(users).groupBy(users.roleId);
+
+    const enrichedRoles = rolesList.map(role => {
+      const rolePerms = perms.filter(p => p.roleId === role.id);
+      const userCount = userCounts.find(u => u.roleId === role.id)?.count || 0;
+      return {
+        ...role,
+        permissions: rolePerms.map(p => ({ id: p.permissionId, name: p.name })),
+        usersCount: Number(userCount)
+      };
+    });
+
+    return successResponse(enrichedRoles);
   } catch (error) {
     return errorResponse("Internal server error", 500);
   }
