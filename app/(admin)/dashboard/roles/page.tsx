@@ -87,6 +87,7 @@ function RoleSidePanel({ onClose, editingRole }: { onClose: () => void; editingR
   const isEditing = !!editingRole;
   const [name, setName] = useState(editingRole?.name || '');
   const [description, setDescription] = useState(editingRole?.description || '');
+  const [newRoleScope, setNewRoleScope] = useState<'app'|'portal'>('app');
   
   // Initialize from the rich API response that we fixed
   const [selectedPerms, setSelectedPerms] = useState<string[]>(
@@ -98,7 +99,15 @@ function RoleSidePanel({ onClose, editingRole }: { onClose: () => void; editingR
   const { mutate: updateRole, isPending: updating } = useUpdateRole();
   const isPending = creating || updating;
 
-  const allBackendPerms: any[] = permsData?.data || [];
+  // Portal roles are admin-panel roles — they get portal-scoped permissions only
+  const PORTAL_ROLE_NAMES = ['admin', 'super-admin', 'staff'];
+  const roleScope = isEditing
+    ? (PORTAL_ROLE_NAMES.includes(editingRole.name) ? 'portal' : 'app')
+    : newRoleScope; // For new roles, use the user-selected scope
+
+  const allBackendPerms: any[] = (permsData?.data || []).filter(
+    (p: any) => p.scope === roleScope
+  );
 
   const handleToggleGroup = (groupId: string, groupPermNames: string[]) => {
     // Find matching backend perm IDs for these names
@@ -150,9 +159,19 @@ function RoleSidePanel({ onClose, editingRole }: { onClose: () => void; editingR
       <div style={overlayStyle} onClick={onClose} />
       <div style={sidePanelStyle} className="slide-in-right">
         <div style={panelHeaderStyle}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600, color: 'var(--text)' }}>
-            {isEditing ? 'Edit Role' : 'Create Role'}
-          </h2>
+          <div>
+            <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: 600, color: 'var(--text)' }}>
+              {isEditing ? 'Edit Role' : 'Create Role'}
+            </h2>
+            <span style={{
+              fontSize: '12px', padding: '3px 10px', borderRadius: '100px', fontWeight: 600,
+              backgroundColor: roleScope === 'portal' ? '#d2992220' : '#238636' + '22',
+              color: roleScope === 'portal' ? '#d29922' : '#3fb950',
+              border: `1px solid ${roleScope === 'portal' ? '#d2992240' : '#3fb95040'}`,
+            }}>
+              {roleScope === 'portal' ? '🖥️ Admin Portal Permissions' : '📱 App Permissions'}
+            </span>
+          </div>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
 
@@ -181,6 +200,36 @@ function RoleSidePanel({ onClose, editingRole }: { onClose: () => void; editingR
               title={isSystemEditing ? "System role descriptions cannot be changed" : ""}
             />
           </div>
+
+          {/* Scope selector — only shown when creating a new role */}
+          {!isEditing && (
+            <div style={fGroup}>
+              <label style={lStyle}>Role Type</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {(['app', 'portal'] as const).map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { setNewRoleScope(s); setSelectedPerms([]); }}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: 'var(--radius)', cursor: 'pointer',
+                      border: `2px solid ${newRoleScope === s ? 'var(--primary)' : 'var(--border)'}`,
+                      backgroundColor: newRoleScope === s ? 'var(--primary)15' : 'var(--bg)',
+                      color: newRoleScope === s ? 'var(--primary)' : 'var(--text-muted)',
+                      fontWeight: newRoleScope === s ? 700 : 400,
+                      fontSize: '13px',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {s === 'app' ? '📱 App Role' : '🖥️ Portal Role'}
+                    <div style={{ fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>
+                      {s === 'app' ? 'Student / Lecturer / Leader' : 'Admin / Staff'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{ marginTop: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
