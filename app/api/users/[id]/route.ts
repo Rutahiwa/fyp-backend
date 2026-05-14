@@ -67,7 +67,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
 
     // Only admins can change roleId or isActive
-    const isAdmin = await checkPermission(auth.user.roleId, "user.update"); // Assuming updating others implies admin for now
+    const isAdmin = await checkPermission(auth.user.roleId, "role.update");
     if (!isAdmin && (validation.data.roleId || validation.data.isActive !== undefined)) {
       return errorResponse("Action not allowed", 403);
     }
