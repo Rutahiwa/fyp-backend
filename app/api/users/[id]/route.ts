@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, roles } from "@/lib/db/schema";
+import { users, roles, colleges, departments, programmes } from "@/lib/db/schema";
 import { eq, and, isNull, ne } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -22,18 +22,63 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!hasPerm) return errorResponse("Forbidden", 403);
     }
 
-    const dbUser = await db.query.users.findFirst({
-      where: and(eq(users.id, userId), isNull(users.deletedAt)),
-      with: {
-        role: true,
-        college: true,
-        programme: true,
-      }
-    });
+    // Fetch user with role
+    const [dbUser] = await db.select({
+      id: users.id,
+      fullName: users.fullName,
+      registrationNumber: users.registrationNumber,
+      sex: users.sex,
+      email: users.email,
+      isActive: users.isActive,
+      roleId: users.roleId,
+      roleName: roles.name,
+      collegeId: users.collegeId,
+      programmeId: users.programmeId,
+      yearOfStudy: users.yearOfStudy,
+      currentSemester: users.currentSemester,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .leftJoin(roles, eq(users.roleId, roles.id))
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+    .limit(1);
 
     if (!dbUser) return errorResponse("User not found", 404);
 
-    const formattedUser = {
+    // Resolve programme name
+    let programmeInfo: { id: string; name: string; code: string } | null = null;
+    let collegeInfo: { id: string; name: string; shortName: string } | null = null;
+
+    if (dbUser.programmeId) {
+      // Join programme → department → college in one query
+      const [prog] = await db.select({
+        progId: programmes.id,
+        progName: programmes.name,
+        progCode: programmes.code,
+        collegeId: departments.collegeId,
+        collegeName: colleges.name,
+        collegeShortName: colleges.shortName,
+      })
+      .from(programmes)
+      .innerJoin(departments, eq(programmes.departmentId, departments.id))
+      .innerJoin(colleges, eq(departments.collegeId, colleges.id))
+      .where(eq(programmes.id, dbUser.programmeId))
+      .limit(1);
+
+      if (prog) {
+        programmeInfo = { id: prog.progId, name: prog.progName, code: prog.progCode };
+        collegeInfo = { id: prog.collegeId, name: prog.collegeName, shortName: prog.collegeShortName };
+      }
+    }
+
+    // If user has a direct collegeId but no programme, fetch college directly
+    if (!collegeInfo && dbUser.collegeId) {
+      const [col] = await db.select({ id: colleges.id, name: colleges.name, shortName: colleges.shortName })
+        .from(colleges).where(eq(colleges.id, dbUser.collegeId)).limit(1);
+      if (col) collegeInfo = col;
+    }
+
+    return successResponse({
       id: dbUser.id,
       fullName: dbUser.fullName,
       registrationNumber: dbUser.registrationNumber,
@@ -41,22 +86,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       email: dbUser.email,
       isActive: dbUser.isActive,
       roleId: dbUser.roleId,
-      roleName: dbUser.role?.name,
-      collegeId: dbUser.collegeId,
-      college: dbUser.college,
-      programmeId: dbUser.programmeId,
-      programme: dbUser.programme,
+      roleName: dbUser.roleName,
       yearOfStudy: dbUser.yearOfStudy,
       currentSemester: dbUser.currentSemester,
       createdAt: dbUser.createdAt,
-      phoneNumber: (dbUser as any).phoneNumber,
-    };
-
-    return successResponse(formattedUser);
+      programme: programmeInfo,
+      college: collegeInfo,
+    });
   } catch (error) {
     return errorResponse("Internal server error", 500);
   }
 }
+
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
