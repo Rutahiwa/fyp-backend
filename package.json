@@ -2,6 +2,20 @@
   "name": "fyp",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@scarf/scarf",
+      "bcrypt",
+      "core-js-pure",
+      "esbuild",
+      "sharp",
+      "@tree-sitter-grammars/tree-sitter-yaml",
+      "tree-sitter",
+      "tree-sitter-json",
+      "unrs-resolver"
+    ]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

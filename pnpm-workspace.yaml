@@ -1,2 +1,12 @@
+allowBuilds:
+  '@scarf/scarf': true
+  '@tree-sitter-grammars/tree-sitter-yaml': true
+  bcrypt: true
+  core-js-pure: true
+  esbuild: true
+  sharp: true
+  tree-sitter: true
+  tree-sitter-json: true
+  unrs-resolver: true
 patchedDependencies:
   drizzle-kit@0.31.10: patches/drizzle-kit@0.31.10.patch
