@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     }
     const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     // Must be own profile or have 'user.read' permission
     if (auth.user.userId !== userId) {
@@ -22,29 +22,37 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!hasPerm) return errorResponse("Forbidden", 403);
     }
 
-    const userResult = await db.select({
-      id: users.id,
-      fullName: users.fullName,
-      registrationNumber: users.registrationNumber,
-      sex: users.sex,
-      email: users.email,
-      isActive: users.isActive,
-      roleId: users.roleId,
-      roleName: roles.name,
-      collegeId: users.collegeId,
-      programmeId: users.programmeId,
-      yearOfStudy: users.yearOfStudy,
-      currentSemester: users.currentSemester,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .leftJoin(roles, eq(users.roleId, roles.id))
-    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
-    .limit(1);
+    const dbUser = await db.query.users.findFirst({
+      where: and(eq(users.id, userId), isNull(users.deletedAt)),
+      with: {
+        role: true,
+        college: true,
+        programme: true,
+      }
+    });
 
-    if (userResult.length === 0) return errorResponse("User not found", 404);
+    if (!dbUser) return errorResponse("User not found", 404);
 
-    return successResponse(userResult[0]);
+    const formattedUser = {
+      id: dbUser.id,
+      fullName: dbUser.fullName,
+      registrationNumber: dbUser.registrationNumber,
+      sex: dbUser.sex,
+      email: dbUser.email,
+      isActive: dbUser.isActive,
+      roleId: dbUser.roleId,
+      roleName: dbUser.role?.name,
+      collegeId: dbUser.collegeId,
+      college: dbUser.college,
+      programmeId: dbUser.programmeId,
+      programme: dbUser.programme,
+      yearOfStudy: dbUser.yearOfStudy,
+      currentSemester: dbUser.currentSemester,
+      createdAt: dbUser.createdAt,
+      phoneNumber: (dbUser as any).phoneNumber,
+    };
+
+    return successResponse(formattedUser);
   } catch (error) {
     return errorResponse("Internal server error", 500);
   }
@@ -55,7 +63,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     if (auth.user.userId !== userId) {
       const hasPerm = await checkPermission(auth.user.roleId, "user.update");
@@ -107,7 +115,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     const [deletedUser] = await db.update(users)
       .set({ deletedAt: new Date(), isActive: false })

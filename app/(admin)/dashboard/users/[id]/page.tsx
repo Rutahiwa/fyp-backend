@@ -9,7 +9,7 @@ import { Badge } from '@/components/admin/ui/Badge';
 import {
   ArrowLeft, Save, Loader2, User, ShieldCheck, Calendar,
   Activity, Megaphone, CalendarDays, LogIn, FilePen, Trash2,
-  PlusCircle, Clock, Globe
+  PlusCircle, Clock, Globe, FileText, Image as ImageIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -33,15 +33,22 @@ function getActionMeta(action: string) {
 
 // ── Activity Feed ────────────────────────────────────────────────────────────
 function UserActivityFeed({ userId }: { userId: string }) {
-  const [tab, setTab] = useState<'all' | 'created' | 'logins'>('all');
+  const [tab, setTab] = useState<'all' | 'created' | 'posts' | 'uploads' | 'logins'>('all');
   const [logPage, setLogPage] = useState(1);
 
-  // Determine action filter based on active tab
-  const actionMap = { all: undefined, created: 'CREATE', logins: 'LOGIN' };
+  // Determine action/entity filter based on active tab
+  const tabFilters: Record<string, { action?: string, entity?: string }> = { 
+    all: {}, 
+    created: { action: 'CREATE' },
+    posts: { entity: 'POST' },
+    uploads: { entity: 'MEDIA' },
+    logins: { action: 'LOGIN' } 
+  };
 
   const { data, isLoading } = useAuditLogs({
     userId,
-    action: actionMap[tab],
+    action: tabFilters[tab].action,
+    entity: tabFilters[tab].entity,
     page: logPage,
     pageSize: 15,
   });
@@ -52,6 +59,8 @@ function UserActivityFeed({ userId }: { userId: string }) {
 
   const tabs = [
     { id: 'all', label: 'All Activity', icon: <Activity size={14} /> },
+    { id: 'posts', label: 'Posts', icon: <FileText size={14} /> },
+    { id: 'uploads', label: 'Uploads', icon: <ImageIcon size={14} /> },
     { id: 'created', label: 'Created Content', icon: <PlusCircle size={14} /> },
     { id: 'logins', label: 'Login History', icon: <LogIn size={14} /> },
   ] as const;
@@ -225,7 +234,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   if (!user) return <div style={{ color: 'var(--danger)', padding: '24px' }}>User not found.</div>;
 
   return (
-    <div style={{ maxWidth: '900px' }}>
+    <div style={{ width: '100%', maxWidth: '1400px' }}>
       {/* Back nav */}
       <Link href="/dashboard/users" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px', textDecoration: 'none' }}>
         <ArrowLeft size={16} /> Back to Users

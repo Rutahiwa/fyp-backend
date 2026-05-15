@@ -11,6 +11,7 @@ export const registerSchema = z.object({
   sex: z.enum(["MALE", "FEMALE"]),
   email: z.string().email(),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  collegeId: z.string().uuid("College is required").optional(),
   programmeId: z.string().uuid("Programme is required"),
   yearOfStudy: z.number().int().min(1).max(5),
 });
