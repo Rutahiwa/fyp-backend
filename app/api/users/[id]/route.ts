@@ -87,11 +87,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       isActive: dbUser.isActive,
       roleId: dbUser.roleId,
       roleName: dbUser.roleName,
+      collegeId: collegeInfo?.id || dbUser.collegeId,
+      college: collegeInfo,
+      programmeId: dbUser.programmeId,
+      programme: programmeInfo,
       yearOfStudy: dbUser.yearOfStudy,
       currentSemester: dbUser.currentSemester,
       createdAt: dbUser.createdAt,
-      programme: programmeInfo,
-      college: collegeInfo,
+      phoneNumber: (dbUser as any).phoneNumber,
     });
   } catch (error) {
     return errorResponse("Internal server error", 500);
