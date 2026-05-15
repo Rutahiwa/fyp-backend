@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
       id: permissions.id,
       name: permissions.name,
       description: permissions.description,
+      scope: permissions.scope,
       groupId: permissions.groupId,
       groupName: permissionGroups.name
     })

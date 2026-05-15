@@ -51,11 +51,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const roleResult = await db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
     if (roleResult.length === 0) return errorResponse("Role not found", 404);
     
-    if (roleResult[0].name === "admin" || roleResult[0].name === "super-admin") {
-       return errorResponse("Core system roles cannot be modified directly.", 403);
+    const body = await req.json();
+    const isSystemRole = roleResult[0].name === "admin" || roleResult[0].name === "super-admin";
+    if (isSystemRole && (body.name || body.description)) {
+       return errorResponse("Core system role name/description cannot be changed.", 403);
     }
 
-    const body = await req.json();
     const validation = updateRoleSchema.safeParse(body);
     if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
 

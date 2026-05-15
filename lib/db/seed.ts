@@ -134,61 +134,61 @@ async function main() {
   // 3. Create Permissions
   await db.insert(permissions).values([
     // User permissions
-    { name: "user.create", description: "Create users", groupId: userGroup.id },
-    { name: "user.read", description: "Read users", groupId: userGroup.id },
-    { name: "user.update", description: "Update users", groupId: userGroup.id },
-    { name: "user.delete", description: "Delete users", groupId: userGroup.id },
+    { name: "user.create", description: "Create users", groupId: userGroup.id, scope: "portal" },
+    { name: "user.read", description: "Read users", groupId: userGroup.id, scope: "portal" },
+    { name: "user.update", description: "Update users", groupId: userGroup.id, scope: "portal" },
+    { name: "user.delete", description: "Delete users", groupId: userGroup.id, scope: "portal" },
     
     // Role permissions
-    { name: "role.create", description: "Create roles" }, // without group
-    { name: "role.read", description: "Read roles" },
-    { name: "role.update", description: "Update roles" },
-    { name: "role.delete", description: "Delete roles" },
+    { name: "role.create", description: "Create roles", scope: "portal" },
+    { name: "role.read", description: "Read roles", scope: "portal" },
+    { name: "role.update", description: "Update roles", scope: "portal" },
+    { name: "role.delete", description: "Delete roles", scope: "portal" },
     
     // System
-    { name: "permission.read", description: "Read permissions" },
-    { name: "audit.read", description: "Read audit logs" },
+    { name: "permission.read", description: "Read permissions", scope: "portal" },
+    { name: "audit.read", description: "Read audit logs", scope: "portal" },
 
     // Colleges
-    { name: "college.read", description: "Read colleges" },
-    { name: "college.manage", description: "Manage colleges" },
+    { name: "college.read", description: "Read colleges", scope: "portal" },
+    { name: "college.manage", description: "Manage colleges", scope: "portal" },
 
     // Programmes
-    { name: "programme.manage", description: "Manage programmes" },
+    { name: "programme.manage", description: "Manage programmes", scope: "portal" },
 
     // Academic Years
-    { name: "academic_year.manage", description: "Manage academic years" },
+    { name: "academic_year.manage", description: "Manage academic years", scope: "portal" },
 
     // Assignments
-    { name: "assignment.manage", description: "Manage lecturer and CR assignments" },
+    { name: "assignment.manage", description: "Manage lecturer and CR assignments", scope: "portal" },
 
     // Announcements
-    { name: "announcement.create", description: "Create announcements" },
-    { name: "announcement.update", description: "Update announcements" },
-    { name: "announcement.delete", description: "Delete announcements" },
-    { name: "announcement.pin", description: "Pin/unpin announcements" },
+    { name: "announcement.create", description: "Create announcements", scope: "app" },
+    { name: "announcement.update", description: "Update announcements", scope: "app" },
+    { name: "announcement.delete", description: "Delete announcements", scope: "app" },
+    { name: "announcement.pin", description: "Pin/unpin announcements", scope: "app" },
 
     // Stories
-    { name: "story.create", description: "Create stories" },
-    { name: "story.delete", description: "Delete stories" },
+    { name: "story.create", description: "Create stories", scope: "app" },
+    { name: "story.delete", description: "Delete stories", scope: "app" },
 
     // Events
-    { name: "event.create", description: "Create events" },
-    { name: "event.update", description: "Update events" },
-    { name: "event.delete", description: "Delete events" },
+    { name: "event.create", description: "Create events", scope: "app" },
+    { name: "event.update", description: "Update events", scope: "app" },
+    { name: "event.delete", description: "Delete events", scope: "app" },
 
     // Lost & Found
-    { name: "lostfound.moderate", description: "Moderate lost & found items" },
+    { name: "lostfound.moderate", description: "Moderate lost & found items", scope: "app" },
 
     // Feedback
-    { name: "feedback.submit", description: "Submit feedback" },
-    { name: "feedback.manage", description: "Manage feedback submissions" },
+    { name: "feedback.submit", description: "Submit feedback", scope: "app" },
+    { name: "feedback.manage", description: "Manage feedback submissions", scope: "app" },
 
     // Targeted posts & groups
-    { name: "post.create", description: "Create targeted posts" },
-    { name: "post.update", description: "Update targeted posts" },
-    { name: "post.delete", description: "Delete targeted posts" },
-    { name: "group.manage", description: "Manage groups and memberships" }
+    { name: "post.create", description: "Create targeted posts", scope: "app" },
+    { name: "post.update", description: "Update targeted posts", scope: "app" },
+    { name: "post.delete", description: "Delete targeted posts", scope: "app" },
+    { name: "group.manage", description: "Manage groups and memberships", scope: "app" }
   ]).onConflictDoNothing({ target: permissions.name });
 
   const createdPermissions = await db.select().from(permissions);

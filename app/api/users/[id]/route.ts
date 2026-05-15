@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, roles } from "@/lib/db/schema";
+import { users, roles, colleges, departments, programmes } from "@/lib/db/schema";
 import { eq, and, isNull, ne } from "drizzle-orm";
 import { authenticateRequest, checkPermission } from "@/lib/auth/middleware";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     }
     const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     // Must be own profile or have 'user.read' permission
     if (auth.user.userId !== userId) {
@@ -22,7 +22,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!hasPerm) return errorResponse("Forbidden", 403);
     }
 
-    const userResult = await db.select({
+    // Fetch user with role
+    const [dbUser] = await db.select({
       id: users.id,
       fullName: users.fullName,
       registrationNumber: users.registrationNumber,
@@ -42,20 +43,71 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .limit(1);
 
-    if (userResult.length === 0) return errorResponse("User not found", 404);
+    if (!dbUser) return errorResponse("User not found", 404);
 
-    return successResponse(userResult[0]);
+    // Resolve programme name
+    let programmeInfo: { id: string; name: string; code: string } | null = null;
+    let collegeInfo: { id: string; name: string; shortName: string } | null = null;
+
+    if (dbUser.programmeId) {
+      // Join programme → department → college in one query
+      const [prog] = await db.select({
+        progId: programmes.id,
+        progName: programmes.name,
+        progCode: programmes.code,
+        collegeId: departments.collegeId,
+        collegeName: colleges.name,
+        collegeShortName: colleges.shortName,
+      })
+      .from(programmes)
+      .innerJoin(departments, eq(programmes.departmentId, departments.id))
+      .innerJoin(colleges, eq(departments.collegeId, colleges.id))
+      .where(eq(programmes.id, dbUser.programmeId))
+      .limit(1);
+
+      if (prog) {
+        programmeInfo = { id: prog.progId, name: prog.progName, code: prog.progCode };
+        collegeInfo = { id: prog.collegeId, name: prog.collegeName, shortName: prog.collegeShortName };
+      }
+    }
+
+    // If user has a direct collegeId but no programme, fetch college directly
+    if (!collegeInfo && dbUser.collegeId) {
+      const [col] = await db.select({ id: colleges.id, name: colleges.name, shortName: colleges.shortName })
+        .from(colleges).where(eq(colleges.id, dbUser.collegeId)).limit(1);
+      if (col) collegeInfo = col;
+    }
+
+    return successResponse({
+      id: dbUser.id,
+      fullName: dbUser.fullName,
+      registrationNumber: dbUser.registrationNumber,
+      sex: dbUser.sex,
+      email: dbUser.email,
+      isActive: dbUser.isActive,
+      roleId: dbUser.roleId,
+      roleName: dbUser.roleName,
+      collegeId: collegeInfo?.id || dbUser.collegeId,
+      college: collegeInfo,
+      programmeId: dbUser.programmeId,
+      programme: programmeInfo,
+      yearOfStudy: dbUser.yearOfStudy,
+      currentSemester: dbUser.currentSemester,
+      createdAt: dbUser.createdAt,
+      phoneNumber: (dbUser as any).phoneNumber,
+    });
   } catch (error) {
     return errorResponse("Internal server error", 500);
   }
 }
+
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await authenticateRequest(req);
     if (auth.error || !auth.user) return errorResponse(auth.error || "Unauthorized", auth.status || 401);
     const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     if (auth.user.userId !== userId) {
       const hasPerm = await checkPermission(auth.user.roleId, "user.update");
@@ -67,7 +119,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!validation.success) return errorResponse("Validation failed", 400, validation.error.format());
 
     // Only admins can change roleId or isActive
-    const isAdmin = await checkPermission(auth.user.roleId, "user.update"); // Assuming updating others implies admin for now
+    const isAdmin = await checkPermission(auth.user.roleId, "role.update");
     if (!isAdmin && (validation.data.roleId || validation.data.isActive !== undefined)) {
       return errorResponse("Action not allowed", 403);
     }
@@ -107,7 +159,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!hasPerm) return errorResponse("Forbidden", 403);
 
     const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const userId = resolvedParams.id === "me" ? auth.user.userId : resolvedParams.id;
 
     const [deletedUser] = await db.update(users)
       .set({ deletedAt: new Date(), isActive: false })

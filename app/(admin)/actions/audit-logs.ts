@@ -9,12 +9,14 @@ export interface GetAuditLogsParams {
   pageSize?: number;
   action?: string;
   userId?: string;
+  entity?: string;
 }
 
-export async function getAuditLogs({ page = 1, pageSize = 20, action, userId }: GetAuditLogsParams = {}) {
+export async function getAuditLogs({ page = 1, pageSize = 20, action, userId, entity }: GetAuditLogsParams = {}) {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (action) params.set('action', action);
   if (userId) params.set('userId', userId);
+  if (entity) params.set('entity', entity);
 
   const res = await fetch(`${BASE_URL}/audit-logs?${params}`, {
     headers: await getAuthHeaders(),

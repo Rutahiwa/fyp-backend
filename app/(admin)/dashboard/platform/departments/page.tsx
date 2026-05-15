@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useColleges, useCreateCollege, useUpdateCollege, useDeleteCollege } from '../query';
+import { useColleges, useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment } from '../query';
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
 import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
-import { X, Plus, Loader2, Building2, Trash2, AlertTriangle, Edit2 } from 'lucide-react';
+import { X, Plus, Loader2, Building, Trash2, AlertTriangle, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -24,24 +24,28 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
-// ── Create College Modal ──────────────────────────────────────────────────────
-function CreateCollegeModal({ onClose }: { onClose: () => void }) {
+// ── Create Department Modal ───────────────────────────────────────────────────
+function CreateDepartmentModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
+  const [collegeId, setCollegeId] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const { mutate: createCollege, isPending } = useCreateCollege();
+  const { data: collegesData, isLoading: isLoadingColleges } = useColleges();
+  const { mutate: createDepartment, isPending } = useCreateDepartment();
+
+  const colleges: any[] = collegesData?.data || [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !shortName) return toast.error('Both fields are required');
+    if (!name || !shortName || !collegeId) return toast.error('All fields are required');
     setErrorMsg('');
-    createCollege({ name, shortName }, {
-      onSuccess: () => { toast.success('College added successfully'); onClose(); },
+    createDepartment({ name, shortName, collegeId }, {
+      onSuccess: () => { toast.success('Department added successfully'); onClose(); },
       onError: (err: any) => {
         if (err.message?.toLowerCase().includes('already exists') || err.message?.toLowerCase().includes('conflict') || err.message?.toLowerCase().includes('unique')) {
-          setErrorMsg('A college with this name or code already exists. Please use a different name or abbreviation.');
+          setErrorMsg('A department with this name or code already exists. Please use a different name or abbreviation.');
         } else {
-          setErrorMsg(err.message || 'Failed to add college');
+          setErrorMsg(err.message || 'Failed to add department');
         }
       },
     });
@@ -51,7 +55,7 @@ function CreateCollegeModal({ onClose }: { onClose: () => void }) {
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <div style={modalHeader}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Add New College</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Add New Department</h2>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
         {errorMsg && (
@@ -61,19 +65,38 @@ function CreateCollegeModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
         <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
           <div style={formGroup}>
-            <label style={labelStyle}>Full College Name</label>
-            <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="College of Information and Communication Technology" required />
+            <label style={labelStyle}>Select College</label>
+            <select 
+              style={inputStyle} 
+              value={collegeId} 
+              onChange={e => setCollegeId(e.target.value)} 
+              required
+              disabled={isLoadingColleges}
+            >
+              <option value="" disabled>Select a college...</option>
+              {colleges.map((col) => (
+                <option key={col.id} value={col.id}>{col.name} ({col.shortName})</option>
+              ))}
+            </select>
           </div>
+
+          <div style={formGroup}>
+            <label style={labelStyle}>Full Department Name</label>
+            <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Department of Computer Science" required />
+          </div>
+          
           <div style={formGroup}>
             <label style={labelStyle}>Abbreviation</label>
-            <input style={inputStyle} value={shortName} onChange={e => setShortName(e.target.value)} placeholder="COICT" required />
+            <input style={inputStyle} value={shortName} onChange={e => setShortName(e.target.value)} placeholder="CSE" required />
           </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
             <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-            <button type="submit" disabled={isPending} style={submitBtnStyle}>
-              {isPending && <Loader2 size={14} style={{ marginRight: '6px' }} />}
-              {isPending ? 'Adding...' : 'Add College'}
+            <button type="submit" disabled={isPending || isLoadingColleges} style={submitBtnStyle}>
+              {isPending && <Loader2 size={14} style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }} />}
+              {isPending ? 'Adding...' : 'Add Department'}
             </button>
           </div>
         </form>
@@ -82,24 +105,27 @@ function CreateCollegeModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Edit College Modal ────────────────────────────────────────────────────────
-function EditCollegeModal({ college, onClose }: { college: any; onClose: () => void }) {
-  const [name, setName] = useState(college.name);
-  const [shortName, setShortName] = useState(college.shortName);
+function EditDepartmentModal({ department, onClose }: { department: any; onClose: () => void }) {
+  const [name, setName] = useState(department.name);
+  const [shortName, setShortName] = useState(department.shortName);
+  const [collegeId, setCollegeId] = useState(department.collegeId);
   const [errorMsg, setErrorMsg] = useState('');
-  const { mutate: updateCollege, isPending } = useUpdateCollege();
+  const { data: collegesData, isLoading: isLoadingColleges } = useColleges();
+  const { mutate: updateDepartment, isPending } = useUpdateDepartment();
+
+  const colleges: any[] = collegesData?.data || [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !shortName) return toast.error('Both fields are required');
+    if (!name || !shortName || !collegeId) return toast.error('All fields are required');
     setErrorMsg('');
-    updateCollege({ id: college.id, data: { name, shortName } }, {
-      onSuccess: () => { toast.success('College updated successfully'); onClose(); },
+    updateDepartment({ id: department.id, data: { name, shortName, collegeId } }, {
+      onSuccess: () => { toast.success('Department updated successfully'); onClose(); },
       onError: (err: any) => {
         if (err.message?.toLowerCase().includes('already exists') || err.message?.toLowerCase().includes('conflict') || err.message?.toLowerCase().includes('unique')) {
-          setErrorMsg('A college with this abbreviation already exists.');
+          setErrorMsg('A department with this name or code already exists. Please use a different name or abbreviation.');
         } else {
-          setErrorMsg(err.message || 'Failed to update college');
+          setErrorMsg(err.message || 'Failed to update department');
         }
       },
     });
@@ -109,7 +135,7 @@ function EditCollegeModal({ college, onClose }: { college: any; onClose: () => v
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <div style={modalHeader}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Edit College</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Edit Department</h2>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
         {errorMsg && (
@@ -119,17 +145,36 @@ function EditCollegeModal({ college, onClose }: { college: any; onClose: () => v
           </div>
         )}
         <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
           <div style={formGroup}>
-            <label style={labelStyle}>Full College Name</label>
+            <label style={labelStyle}>Select College</label>
+            <select 
+              style={inputStyle} 
+              value={collegeId} 
+              onChange={e => setCollegeId(e.target.value)} 
+              required
+              disabled={isLoadingColleges}
+            >
+              <option value="" disabled>Select a college...</option>
+              {colleges.map((col) => (
+                <option key={col.id} value={col.id}>{col.name} ({col.shortName})</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={formGroup}>
+            <label style={labelStyle}>Full Department Name</label>
             <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} required />
           </div>
+          
           <div style={formGroup}>
             <label style={labelStyle}>Abbreviation</label>
             <input style={inputStyle} value={shortName} onChange={e => setShortName(e.target.value)} required />
           </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
             <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-            <button type="submit" disabled={isPending} style={submitBtnStyle}>
+            <button type="submit" disabled={isPending || isLoadingColleges} style={submitBtnStyle}>
               {isPending && <Loader2 size={14} style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }} />}
               {isPending ? 'Saving...' : 'Save Changes'}
             </button>
@@ -140,28 +185,28 @@ function EditCollegeModal({ college, onClose }: { college: any; onClose: () => v
   );
 }
 
-// ── Colleges Page ─────────────────────────────────────────────────────────────
-export default function CollegesPage() {
+// ── Departments Page ──────────────────────────────────────────────────────────
+export default function DepartmentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
-  const { data, isLoading } = useColleges();
-  const { mutate: deleteCollege, isPending: isDeleting } = useDeleteCollege();
+  const { data, isLoading } = useDepartments();
+  const { mutate: deleteDepartment, isPending: isDeleting } = useDeleteDepartment();
 
-  const colleges: any[] = data?.data || [];
-  const totalProgrammes = colleges.reduce((sum: number, c: any) => sum + (c.programmesCount ?? c.programmes?.length ?? 0), 0);
+  const departments: any[] = data?.data || [];
 
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: 'name',
-      header: 'College Name',
+      header: 'Department Name',
       cell: ({ row }) => <span style={{ fontWeight: 500 }}>{row.original.name}</span>,
     },
     { accessorKey: 'shortName', header: 'Abbreviation' },
+    { accessorKey: 'collegeName', header: 'College' },
     {
       accessorKey: 'createdAt',
       header: 'Added On',
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString()
+      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
     },
     {
       id: 'actions',
@@ -170,60 +215,58 @@ export default function CollegesPage() {
           <button
             onClick={() => setEditTarget(row.original)}
             style={{ backgroundColor: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
-            title="Edit College"
+            title="Edit Department"
           >
             <Edit2 size={16} />
           </button>
           <button
             onClick={() => setDeleteTarget(row.original)}
             style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center' }}
-            title="Delete College"
+            title="Delete Department"
           >
             <Trash2 size={16} />
           </button>
         </div>
       ),
-    }
+    },
   ];
 
   return (
     <div>
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <StatCard icon={<Building2 size={20} color="var(--primary)" />} label="Total Colleges" value={isLoading ? '...' : colleges.length} color="var(--primary)" />
-        <StatCard icon={<Building2 size={20} color="#3fb950" />} label="Total Programmes" value={isLoading ? '...' : totalProgrammes} color="#3fb950" />
-        <StatCard icon={<Building2 size={20} color="#d29922" />} label="Active Since" value={isLoading ? '...' : (colleges[0] ? new Date(colleges[0].createdAt).getFullYear() : '—')} color="#d29922" />
+        <StatCard icon={<Building size={20} color="var(--primary)" />} label="Total Departments" value={isLoading ? '...' : departments.length} color="var(--primary)" />
+        <StatCard icon={<Building size={20} color="#d29922" />} label="Active Since" value={isLoading ? '...' : (departments[0] ? new Date(departments[0].createdAt).getFullYear() : '—')} color="#d29922" />
       </div>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Colleges</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>Manage university colleges and schools.</p>
+          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Departments</h1>
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>Manage academic departments under colleges.</p>
         </div>
         <button onClick={() => setIsModalOpen(true)} style={createBtnStyle}>
-          <Plus size={16} style={{ marginRight: '6px' }} /> Add College
+          <Plus size={16} style={{ marginRight: '6px' }} /> Add Department
         </button>
       </div>
 
-      {isLoading ? <DataTableSkeleton columns={4} rows={6} /> : (
-        <DataTable columns={columns} data={colleges} />
+      {isLoading ? <DataTableSkeleton columns={5} rows={6} /> : (
+        <DataTable columns={columns} data={departments} />
       )}
 
-      {isModalOpen && <CreateCollegeModal onClose={() => setIsModalOpen(false)} />}
-      
-      {editTarget && <EditCollegeModal college={editTarget} onClose={() => setEditTarget(null)} />}
+      {isModalOpen && <CreateDepartmentModal onClose={() => setIsModalOpen(false)} />}
+      {editTarget && <EditDepartmentModal department={editTarget} onClose={() => setEditTarget(null)} />}
 
       {deleteTarget && (
         <ConfirmModal
-          title="Delete College"
+          title="Delete Department"
           message={`Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.`}
           isPending={isDeleting}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => {
-            deleteCollege(deleteTarget.id, {
-              onSuccess: () => { toast.success('College deleted'); setDeleteTarget(null); },
-              onError: (err: any) => toast.error(err.message || 'Failed to delete college'),
+            deleteDepartment(deleteTarget.id, {
+              onSuccess: () => { toast.success('Department deleted'); setDeleteTarget(null); },
+              onError: (err: any) => toast.error(err.message || 'Failed to delete department'),
             });
           }}
         />
@@ -233,8 +276,8 @@ export default function CollegesPage() {
 }
 
 // Shared styles
-const overlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 };
-const modalStyle: React.CSSProperties = { backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '480px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' };
+const overlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 };
+const modalStyle: React.CSSProperties = { backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '480px', boxShadow: '0 8px 32px rgba(0,0,0,0.45)' };
 const modalHeader: React.CSSProperties = { padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
 const closeBtnStyle: React.CSSProperties = { background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' };
 const formGroup: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '8px' };

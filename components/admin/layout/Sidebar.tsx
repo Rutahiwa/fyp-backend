@@ -33,6 +33,7 @@ const NAV_ITEMS = [
   
   { section: 'Platform' },
   { label: 'Colleges', href: '/dashboard/platform/colleges', icon: Building2 },
+  { label: 'Departments', href: '/dashboard/platform/departments', icon: LayoutDashboard },
   { label: 'Programmes', href: '/dashboard/platform/programmes', icon: BookOpen },
   { label: 'Academic Years', href: '/dashboard/platform/academic-years', icon: GraduationCap },
   { label: 'Event Categories', href: '/dashboard/event-categories', icon: Calendar },

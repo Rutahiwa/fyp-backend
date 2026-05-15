@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  return NextResponse.redirect(new URL("/login", "https://fyp-backend-pi-one.vercel.app"));
+export async function GET(request: NextRequest) {
+  return NextResponse.redirect(new URL("/login", request.url));
 }

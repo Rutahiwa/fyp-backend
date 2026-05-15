@@ -5,32 +5,128 @@ import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, usePermissions }
 import { DataTable } from '@/components/admin/ui/DataTable';
 import { DataTableSkeleton } from '@/components/admin/ui/DataTableSkeleton';
 import { ColumnDef } from '@tanstack/react-table';
-import { X, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '@/components/admin/ui/ConfirmModal';
+import { X, Plus, Loader2, Pencil, Trash2, ShieldAlert, Key, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
-// ─── Role Modal (create + edit) ────────────────────────────────────────────────
-function RoleModal({ onClose, editingRole }: { onClose: () => void; editingRole?: any }) {
+/**
+ * Configuration for grouping permissions in the UI
+ */
+const PERMISSION_GROUPS = [
+  {
+    id: 'users',
+    label: '👥 Users',
+    permissions: ['user.create', 'user.read', 'user.update', 'user.delete'],
+  },
+  {
+    id: 'roles',
+    label: '🔐 Roles & Permissions',
+    permissions: ['role.create', 'role.read', 'role.update', 'role.delete', 'permission.read'],
+  },
+  {
+    id: 'platform',
+    label: '🏫 Platform',
+    permissions: ['college.read', 'college.manage', 'programme.manage', 'academic_year.manage', 'assignment.manage'],
+  },
+  {
+    id: 'announcements',
+    label: '📢 Announcements',
+    permissions: ['announcement.create', 'announcement.update', 'announcement.delete', 'announcement.pin'],
+  },
+  {
+    id: 'events',
+    label: '📅 Events',
+    permissions: ['event.create', 'event.update', 'event.delete'],
+  },
+  {
+    id: 'stories',
+    label: '📖 Stories',
+    permissions: ['story.create', 'story.delete'],
+  },
+  {
+    id: 'lostfound',
+    label: '🔍 Lost & Found',
+    permissions: ['lostfound.moderate'],
+  },
+  {
+    id: 'feedback',
+    label: '💬 Feedback',
+    permissions: ['feedback.submit', 'feedback.manage'],
+  },
+  {
+    id: 'posts_groups',
+    label: '🗂️ Posts & Groups',
+    permissions: ['post.create', 'post.update', 'post.delete', 'group.manage'],
+  },
+  {
+    id: 'audit',
+    label: '📋 Audit',
+    permissions: ['audit.read'],
+  }
+];
+
+function formatPermName(raw: string) {
+  const [resource, action] = raw.split('.');
+  if (!action) return raw;
+  const aCap = action.charAt(0).toUpperCase() + action.slice(1);
+  const rCap = resource.charAt(0).toUpperCase() + resource.slice(1) + (resource.endsWith('s') ? '' : 's');
+  
+  if (['read', 'create', 'update', 'delete', 'manage', 'moderate', 'submit', 'pin'].includes(action)) {
+     if (action === 'submit' && resource === 'feedback') return 'Submit Feedback';
+     if (action === 'manage' && resource === 'feedback') return 'Manage Feedback';
+     if (action === 'read' && resource === 'audit') return 'Read Audit Logs';
+     if (action === 'moderate' && resource === 'lostfound') return 'Moderate Lost & Found';
+     if (action === 'read' && resource === 'permission') return 'Read Permissions';
+     return `${aCap} ${rCap}`;
+  }
+  return raw;
+}
+
+// ─── Side Panel (Create + Edit) ────────────────────────────────────────────────
+function RoleSidePanel({ onClose, editingRole }: { onClose: () => void; editingRole?: any }) {
   const isEditing = !!editingRole;
   const [name, setName] = useState(editingRole?.name || '');
   const [description, setDescription] = useState(editingRole?.description || '');
-  const [selectedPerms, setSelectedPerms] = useState<string[]>(editingRole?.permissions?.map((p: any) => p.id || p) || []);
+  const [newRoleScope, setNewRoleScope] = useState<'app'|'portal'>('app');
+  
+  // Initialize from the rich API response that we fixed
+  const [selectedPerms, setSelectedPerms] = useState<string[]>(
+    editingRole?.permissions?.map((p: any) => p.id || p) || []
+  );
 
   const { data: permsData } = usePermissions();
   const { mutate: createRole, isPending: creating } = useCreateRole();
   const { mutate: updateRole, isPending: updating } = useUpdateRole();
   const isPending = creating || updating;
 
-  const permissions: any[] = permsData?.data || [];
+  // Portal roles are admin-panel roles — they get portal-scoped permissions only
+  const PORTAL_ROLE_NAMES = ['admin', 'super-admin', 'staff'];
+  const roleScope = isEditing
+    ? (PORTAL_ROLE_NAMES.includes(editingRole.name) ? 'portal' : 'app')
+    : newRoleScope; // For new roles, use the user-selected scope
 
-  // Group permissions by resource prefix (e.g., "users:read" → "users")
-  const grouped = permissions.reduce((acc: Record<string, any[]>, perm: any) => {
-    const group = perm.name?.split(':')[0] || 'general';
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(perm);
-    return acc;
-  }, {});
+  const allBackendPerms: any[] = (permsData?.data || []).filter(
+    (p: any) => p.scope === roleScope
+  );
 
-  const togglePerm = (permId: string) => {
+  const handleToggleGroup = (groupId: string, groupPermNames: string[]) => {
+    // Find matching backend perm IDs for these names
+    const groupPermIds = allBackendPerms
+      .filter(p => groupPermNames.includes(p.name))
+      .map(p => p.id);
+      
+    const isAllSelected = groupPermIds.every(id => selectedPerms.includes(id));
+    
+    if (isAllSelected) {
+      // Unselect all in this group
+      setSelectedPerms(prev => prev.filter(id => !groupPermIds.includes(id)));
+    } else {
+      // Select all in this group
+      setSelectedPerms(prev => Array.from(new Set([...prev, ...groupPermIds])));
+    }
+  };
+
+  const toggleSinglePerm = (permId: string) => {
     setSelectedPerms(prev =>
       prev.includes(permId) ? prev.filter(p => p !== permId) : [...prev, permId]
     );
@@ -55,79 +151,176 @@ function RoleModal({ onClose, editingRole }: { onClose: () => void; editingRole?
     }
   };
 
+  // Block editing of system role basics
+  const isSystemEditing = isEditing && (editingRole.name === 'admin' || editingRole.name === 'super-admin');
+
   return (
-    <div style={overlayStyle}>
-      <div style={{ ...modalStyle, maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={modalHeaderStyle}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>
-            {isEditing ? 'Edit Role' : 'Create Role'}
-          </h2>
+    <>
+      <div style={overlayStyle} onClick={onClose} />
+      <div style={sidePanelStyle} className="slide-in-right">
+        <div style={panelHeaderStyle}>
+          <div>
+            <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: 600, color: 'var(--text)' }}>
+              {isEditing ? 'Edit Role' : 'Create Role'}
+            </h2>
+            <span style={{
+              fontSize: '12px', padding: '3px 10px', borderRadius: '100px', fontWeight: 600,
+              backgroundColor: roleScope === 'portal' ? '#d2992220' : '#238636' + '22',
+              color: roleScope === 'portal' ? '#d29922' : '#3fb950',
+              border: `1px solid ${roleScope === 'portal' ? '#d2992240' : '#3fb95040'}`,
+            }}>
+              {roleScope === 'portal' ? '🖥️ Admin Portal Permissions' : '📱 App Permissions'}
+            </span>
+          </div>
           <button onClick={onClose} style={closeBtnStyle}><X size={20} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={panelContentStyle}>
           <div style={fGroup}>
             <label style={lStyle}>Role Name</label>
-            <input style={iStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. lecturer, class_rep" required />
+            <input 
+              style={iStyle} 
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+              placeholder="e.g. lecturer" 
+              required 
+              disabled={isSystemEditing}
+              title={isSystemEditing ? "System role names cannot be changed" : ""}
+            />
           </div>
 
           <div style={fGroup}>
             <label style={lStyle}>Description</label>
-            <input style={iStyle} value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description of this role..." />
+            <textarea 
+              style={{ ...iStyle, resize: 'vertical', minHeight: '80px' }} 
+              value={description} 
+              onChange={e => setDescription(e.target.value)} 
+              placeholder="Brief description..."
+              disabled={isSystemEditing}
+              title={isSystemEditing ? "System role descriptions cannot be changed" : ""}
+            />
           </div>
 
-          {/* Permission Checkboxes */}
-          {Object.keys(grouped).length > 0 && (
+          {/* Scope selector — only shown when creating a new role */}
+          {!isEditing && (
             <div style={fGroup}>
-              <label style={lStyle}>Permissions</label>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                {Object.entries(grouped).map(([group, perms]) => (
-                  <div key={group}>
-                    <div style={{ padding: '8px 12px', backgroundColor: 'var(--surface-2)', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {group}
+              <label style={lStyle}>Role Type</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {(['app', 'portal'] as const).map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { setNewRoleScope(s); setSelectedPerms([]); }}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: 'var(--radius)', cursor: 'pointer',
+                      border: `2px solid ${newRoleScope === s ? 'var(--primary)' : 'var(--border)'}`,
+                      backgroundColor: newRoleScope === s ? 'var(--primary)15' : 'var(--bg)',
+                      color: newRoleScope === s ? 'var(--primary)' : 'var(--text-muted)',
+                      fontWeight: newRoleScope === s ? 700 : 400,
+                      fontSize: '13px',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {s === 'app' ? '📱 App Role' : '🖥️ Portal Role'}
+                    <div style={{ fontSize: '11px', marginTop: '2px', opacity: 0.7 }}>
+                      {s === 'app' ? 'Student / Lecturer / Leader' : 'Admin / Staff'}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
-                      {perms.map((perm: any) => (
-                        <label
-                          key={perm.id}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: 'var(--text)', borderBottom: '1px solid var(--border)' }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedPerms.includes(perm.id)}
-                            onChange={() => togglePerm(perm.id)}
-                            style={{ accentColor: 'var(--primary)' }}
-                          />
-                          {perm.name}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                  </button>
                 ))}
               </div>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{selectedPerms.length} permission(s) selected</span>
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-            <button type="submit" disabled={isPending} style={submitBtnStyle}>
-              {isPending && <Loader2 size={14} style={{ marginRight: '6px' }} />}
-              {isPending ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Role'}
-            </button>
+          <div style={{ marginTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <label style={lStyle}>Permissions</label>
+              <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 600 }}>
+                {selectedPerms.length} selected
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {PERMISSION_GROUPS.map(group => {
+                const groupBackendPerms = allBackendPerms.filter(p => group.permissions.includes(p.name));
+                if (groupBackendPerms.length === 0) return null;
+
+                const selectedInGroup = groupBackendPerms.filter(p => selectedPerms.includes(p.id));
+                const isAllSelected = selectedInGroup.length === groupBackendPerms.length;
+                const isSomeSelected = selectedInGroup.length > 0 && !isAllSelected;
+
+                return (
+                  <div key={group.id} style={groupCardStyle}>
+                    <div style={groupHeaderStyle}>
+                      <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text)' }}>{group.label}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => handleToggleGroup(group.id, group.permissions)}
+                        style={selectAllBtnStyle}
+                      >
+                        {isAllSelected ? <CheckSquare size={16} color="var(--primary)" /> : 
+                         isSomeSelected ? <Square size={16} fill="var(--primary)" color="var(--primary)" opacity={0.5} /> : 
+                         <Square size={16} color="var(--text-muted)" />}
+                        <span style={{ marginLeft: '6px', fontSize: '12px' }}>
+                          {isAllSelected ? 'Deselect All' : 'Select All'}
+                        </span>
+                      </button>
+                    </div>
+                    
+                    <div style={permsGridStyle}>
+                      {groupBackendPerms.map(perm => {
+                        const isChecked = selectedPerms.includes(perm.id);
+                        return (
+                          <label key={perm.id} style={{ ...permLabelStyle, ...(isChecked ? permLabelSelectedStyle : {}) }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSinglePerm(perm.id)}
+                              style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                            />
+                            {formatPermName(perm.name)}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
         </form>
+        <div style={panelFooterStyle}>
+          <button type="button" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+          <button onClick={handleSubmit} type="button" disabled={isPending} style={submitBtnStyle}>
+            {isPending && <Loader2 size={16} className="animate-spin" style={{ marginRight: '8px' }} />}
+            {isPending ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Role'}
+          </button>
+        </div>
       </div>
-    </div>
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .slide-in-right {
+          animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}} />
+    </>
   );
 }
 
 // ─── Roles Page ─────────────────────────────────────────────────────────────────
 export default function RolesPage() {
   const { data, isLoading } = useRoles();
-  const { mutate: deleteRole } = useDeleteRole();
+  const { mutate: deleteRole, isPending: isDeleting } = useDeleteRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+
+  const roles: any[] = data?.data || [];
+  const totalPermissions = roles.reduce((sum: number, r: any) => sum + (r.permissions?.length ?? 0), 0);
 
   const handleEdit = (role: any) => {
     setEditingRole(role);
@@ -139,12 +332,12 @@ export default function RolesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (role: any) => {
-    if (!confirm(`Delete the "${role.name}" role? This cannot be undone.`)) return;
-    deleteRole(role.id, {
-      onSuccess: () => toast.success('Role deleted'),
-      onError: (err: any) => toast.error(err.message || 'Delete failed'),
-    });
+  const handleDelete = (role: any) => setDeleteTarget(role);
+
+  // Helper to map raw permission names to their UI group label
+  const getGroupBadgeForPerm = (permName: string) => {
+    const group = PERMISSION_GROUPS.find(g => g.permissions.includes(permName));
+    return group?.label || 'Other';
   };
 
   const columns: ColumnDef<any>[] = [
@@ -161,28 +354,52 @@ export default function RolesPage() {
     {
       accessorKey: 'usersCount',
       header: 'Assigned Users',
-      cell: ({ row }) => row.original.usersCount ?? '—'
+      cell: ({ row }) => row.original.usersCount ?? '0'
     },
     {
       accessorKey: 'permissions',
-      header: 'Permissions',
+      header: 'Access Level',
       cell: ({ row }) => {
-        const count = row.original.permissions?.length ?? 0;
-        return <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{count} permission{count !== 1 ? 's' : ''}</span>;
+        const perms: any[] = row.original.permissions || [];
+        if (perms.length === 0) return <span style={{ color: 'var(--text-muted)' }}>No permissions</span>;
+        
+        // Find unique groups these permissions belong to
+        const activeGroups = Array.from(new Set(perms.map(p => getGroupBadgeForPerm(p.name || ''))));
+        
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {activeGroups.slice(0, 3).map((g, idx) => (
+              <span key={idx} style={badgeStyle}>{g}</span>
+            ))}
+            {activeGroups.length > 3 && (
+              <span style={badgeCountStyle}>+{activeGroups.length - 3}</span>
+            )}
+          </div>
+        );
       }
     },
     {
       id: 'actions',
       cell: ({ row }) => {
         const role = row.original;
+        const isSystem = role.name === 'admin' || role.name === 'super-admin';
+        
         return (
           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-            <button onClick={() => handleEdit(role)} style={actionBtnStyle} title="Edit Role">
-              <Pencil size={15} color="var(--info)" />
-            </button>
-            <button onClick={() => handleDelete(role)} style={actionBtnStyle} title="Delete Role">
-              <Trash2 size={15} color="var(--danger)" />
-            </button>
+            {!isSystem ? (
+               <>
+                 <button onClick={() => handleEdit(role)} style={actionBtnStyle} title="Edit Role">
+                   <Pencil size={16} color="var(--info)" />
+                 </button>
+                 <button onClick={() => handleDelete(role)} style={actionBtnStyle} title="Delete Role">
+                   <Trash2 size={16} color="var(--danger)" />
+                 </button>
+               </>
+            ) : (
+               <button onClick={() => handleEdit(role)} style={actionBtnStyle} title="View / Edit Permissions">
+                 <Pencil size={16} color="var(--text-muted)" />
+               </button>
+            )}
           </div>
         );
       }
@@ -191,9 +408,31 @@ export default function RolesPage() {
 
   return (
     <div>
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+        <div style={statCard}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--primary)20', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px' }}>
+            <ShieldAlert size={20} color="var(--primary)" />
+          </div>
+          <div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{isLoading ? '...' : roles.length}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Total Roles</div>
+          </div>
+        </div>
+        <div style={statCard}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#d2992220', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '16px' }}>
+            <Key size={20} color="#d29922" />
+          </div>
+          <div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{isLoading ? '...' : totalPermissions}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Total Permissions</div>
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Roles & Permissions</h1>
+          <h1 style={{ fontSize: '24px', margin: '0 0 8px 0', color: 'var(--text)' }}>Roles &amp; Permissions</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>Define RBAC roles and their system access.</p>
         </div>
         <button onClick={handleCreate} style={createBtnStyle}>
@@ -202,25 +441,55 @@ export default function RolesPage() {
       </div>
 
       {isLoading ? <DataTableSkeleton columns={5} rows={5} /> : (
-        <DataTable columns={columns} data={data?.data || []} />
+        <DataTable columns={columns} data={roles} />
       )}
 
       {isModalOpen && (
-        <RoleModal onClose={() => { setIsModalOpen(false); setEditingRole(null); }} editingRole={editingRole} />
+        <RoleSidePanel onClose={() => { setIsModalOpen(false); setEditingRole(null); }} editingRole={editingRole} />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Role"
+          message={`Are you sure you want to delete the "${deleteTarget.name}" role? This action cannot be undone.`}
+          isPending={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteRole(deleteTarget.id, {
+              onSuccess: () => { toast.success('Role deleted'); setDeleteTarget(null); },
+              onError: (err: any) => toast.error(err.message || 'Delete failed'),
+            });
+          }}
+        />
       )}
     </div>
   );
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────────
-const overlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 };
-const modalStyle: React.CSSProperties = { backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.45)' };
-const modalHeaderStyle: React.CSSProperties = { padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const closeBtnStyle: React.CSSProperties = { background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' };
+const statCard: React.CSSProperties = { backgroundColor: 'var(--surface)', padding: '20px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center' };
+const overlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, backdropFilter: 'blur(2px)' };
+const sidePanelStyle: React.CSSProperties = { position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '500px', backgroundColor: 'var(--surface)', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 32px rgba(0,0,0,0.2)', zIndex: 101, display: 'flex', flexDirection: 'column' };
+const panelHeaderStyle: React.CSSProperties = { padding: '24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const panelContentStyle: React.CSSProperties = { padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' };
+const panelFooterStyle: React.CSSProperties = { padding: '20px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '12px', backgroundColor: 'var(--bg)' };
+
+const closeBtnStyle: React.CSSProperties = { background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' };
 const fGroup: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '8px' };
 const lStyle: React.CSSProperties = { fontSize: '14px', fontWeight: 500, color: 'var(--text)' };
 const iStyle: React.CSSProperties = { padding: '10px 12px', backgroundColor: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '14px', outline: 'none', width: '100%', boxSizing: 'border-box' };
+
+const groupCardStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', backgroundColor: 'var(--bg)' };
+const groupHeaderStyle: React.CSSProperties = { padding: '12px 16px', backgroundColor: 'var(--surface-2)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const selectAllBtnStyle: React.CSSProperties = { background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' };
+const permsGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', padding: '12px 16px', gap: '12px' };
+const permLabelStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text)', padding: '6px', borderRadius: '4px', transition: 'background 0.2s' };
+const permLabelSelectedStyle: React.CSSProperties = { backgroundColor: 'var(--surface-2)' };
+
+const badgeStyle: React.CSSProperties = { fontSize: '12px', padding: '4px 8px', backgroundColor: 'var(--surface-2)', color: 'var(--text)', borderRadius: '100px', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' };
+const badgeCountStyle: React.CSSProperties = { ...badgeStyle, backgroundColor: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)', fontWeight: 600 };
+
 const cancelBtnStyle: React.CSSProperties = { padding: '10px 16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 };
-const submitBtnStyle: React.CSSProperties = { padding: '10px 16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' };
+const submitBtnStyle: React.CSSProperties = { padding: '10px 20px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' };
 const createBtnStyle: React.CSSProperties = { padding: '10px 16px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' };
-const actionBtnStyle: React.CSSProperties = { backgroundColor: 'transparent', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const actionBtnStyle: React.CSSProperties = { backgroundColor: 'transparent', border: 'none', padding: '8px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
