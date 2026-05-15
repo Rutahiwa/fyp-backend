@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { lostFoundItems, lostFoundMedia, users, categories, roles } from "@/lib/db/schema";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { lostFoundItems, lostFoundMedia, users, categories, roles, media } from "@/lib/db/schema";
+import { eq, and, isNull, desc, sql, inArray } from "drizzle-orm";
 import { withAuth } from "@/lib/auth/middleware";
 import { successResponse, errorResponse, paginatedResponse } from "@/lib/utils/api-response";
 import { parsePagination } from "@/lib/utils/pagination";
@@ -60,14 +60,38 @@ export const GET = withAuth(async (req, ctx) => {
   .orderBy(desc(lostFoundItems.createdAt))
   .limit(pageSize).offset(offset);
 
-  // Check if current user is admin
+  // Check if current user is admin (determines reporter visibility for anonymous items)
   const [roleCheck] = await db.select({ name: roles.name })
     .from(roles).innerJoin(users, eq(users.roleId, roles.id))
     .where(eq(users.id, ctx.user.userId)).limit(1);
   const isAdmin = roleCheck?.name === "admin";
 
+  // Fetch cover images for all items in one query
+  const itemIds = list.map(i => i.id);
+  const coverImages = itemIds.length > 0
+    ? await db.select({
+        itemId: lostFoundMedia.itemId,
+        mediaId: media.id,
+        url: media.url,
+        type: media.type,
+        mimeType: media.mimeType,
+        filename: media.filename,
+      })
+      .from(lostFoundMedia)
+      .innerJoin(media, eq(lostFoundMedia.mediaId, media.id))
+      .where(inArray(lostFoundMedia.itemId, itemIds))
+    : [];
+
+  // Build a map: itemId → first media record found
+  const coverMap = new Map<string, any>();
+  for (const img of coverImages) {
+    if (!coverMap.has(img.itemId)) {
+      coverMap.set(img.itemId, { id: img.mediaId, url: img.url, type: img.type, mimeType: img.mimeType, filename: img.filename });
+    }
+  }
+
   const data = list.map(item => {
-    const base = {
+    return {
       id: item.id,
       type: item.type,
       title: item.title,
@@ -82,12 +106,13 @@ export const GET = withAuth(async (req, ctx) => {
       createdAt: item.createdAt,
       category: item.categoryId ? { id: item.categoryId, name: item.categoryName } : null,
       reporter: item.isAnonymous && !isAdmin ? null : { id: item.reporterId, fullName: item.reporterName },
+      coverImage: coverMap.get(item.id) || null,
     };
-    return base;
   });
 
   return successResponse(data);
 });
+
 
 export const POST = withAuth(async (req, ctx) => {
   const body = await req.json();
